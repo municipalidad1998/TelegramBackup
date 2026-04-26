@@ -34,16 +34,28 @@ class AudioViewModel @Inject constructor(
 
     private fun loadAudioFiles() {
         viewModelScope.launch {
-            repository.getFilesByType(FileType.AUDIO).collect { files ->
-                _uiState.value = _uiState.value.copy(audioFiles = files)
+            try {
+                repository.getFilesByType(FileType.AUDIO).collect { files ->
+                    _uiState.value = _uiState.value.copy(audioFiles = files)
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Error loading audio files: ${e.message}"
+                )
             }
         }
     }
 
     private fun loadPlaylists() {
         viewModelScope.launch {
-            repository.getAllPlaylists().collect { playlists ->
-                _uiState.value = _uiState.value.copy(playlists = playlists)
+            try {
+                repository.getAllPlaylists().collect { playlists ->
+                    _uiState.value = _uiState.value.copy(playlists = playlists)
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Error loading playlists: ${e.message}"
+                )
             }
         }
     }

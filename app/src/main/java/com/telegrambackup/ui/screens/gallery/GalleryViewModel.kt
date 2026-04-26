@@ -36,21 +36,35 @@ class GalleryViewModel @Inject constructor(
 
     private fun loadFiles() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            repository.getAllFiles().collect { files ->
-                val filtered = _uiState.value.selectedFilter?.let { filter ->
-                    files.filter { it.fileType == filter }
-                } ?: files
+            try {
+                _uiState.value = _uiState.value.copy(isLoading = true)
+                repository.getAllFiles().collect { files ->
+                    try {
+                        val filtered = _uiState.value.selectedFilter?.let { filter ->
+                            files.filter { it.fileType == filter }
+                        } ?: files
 
-                val grouped = filtered.groupBy { file ->
-                    val cal = Calendar.getInstance().apply { timeInMillis = file.dateAdded }
-                    dateFormat.format(cal.time)
+                        val grouped = filtered.groupBy { file ->
+                            val cal = Calendar.getInstance().apply { timeInMillis = file.dateAdded }
+                            dateFormat.format(cal.time)
+                        }
+
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            allFiles = files,
+                            groupedFiles = grouped
+                        )
+                    } catch (e: Exception) {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = "Error processing files: ${e.message}"
+                        )
+                    }
                 }
-
+            } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    allFiles = files,
-                    groupedFiles = grouped
+                    error = "Error loading files: ${e.message}"
                 )
             }
         }
@@ -63,8 +77,14 @@ class GalleryViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            repository.scanAndRegisterNewFiles()
-            loadFiles()
+            try {
+                repository.scanAndRegisterNewFiles()
+                loadFiles()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Refresh failed: ${e.message}"
+                )
+            }
         }
     }
 
