@@ -2,7 +2,7 @@ package com.telegrambackup.util
 
 import android.util.Log
 import java.io.PrintWriter
-import java.io StringWriter
+import java.io.StringWriter
 
 /**
  * Utility for safe error handling that returns Result instead of throwing.
