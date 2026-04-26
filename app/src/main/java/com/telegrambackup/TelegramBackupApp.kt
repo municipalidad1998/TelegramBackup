@@ -13,6 +13,7 @@ import java.io.PrintWriter
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
+import javax.inject.Inject
 
 @HiltAndroidApp
 class TelegramBackupApp : Application(), Configuration.Provider {
@@ -36,12 +37,13 @@ class TelegramBackupApp : Application(), Configuration.Provider {
     }
 
     /**
-     * Global crash handler - logs crashes to a file so we can debug.
+     * Global crash handler - shows crash screen with error details.
      */
     private fun setupCrashHandler() {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
+                // Write to file as backup
                 val crashDir = File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
                     "TelegramBackup"
@@ -55,8 +57,13 @@ class TelegramBackupApp : Application(), Configuration.Provider {
                 writer.println()
                 throwable.printStackTrace(writer)
                 writer.close()
-            } catch (_: Exception) {}
-            defaultHandler?.uncaughtException(thread, throwable)
+
+                // Launch crash screen
+                CrashActivity.launch(this@TelegramBackupApp, thread.name, throwable)
+            } catch (e: Exception) {
+                // If crash screen fails, fall back to default handler
+                defaultHandler?.uncaughtException(thread, throwable)
+            }
         }
     }
 
