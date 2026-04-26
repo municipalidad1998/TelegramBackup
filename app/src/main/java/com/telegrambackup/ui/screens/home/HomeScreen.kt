@@ -232,6 +232,10 @@ fun HomeScreen(
             ) {
                 Button(
                     onClick = {
+                        if (!uiState.isConfigured) {
+                            showSetupDialog = true
+                            return@Button
+                        }
                         if (!permissionGranted) {
                             val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 arrayOf(
@@ -392,6 +396,25 @@ fun SetupDialog(
 ) {
     var token by remember { mutableStateOf("") }
     var chatId by remember { mutableStateOf("") }
+    var tokenError by remember { mutableStateOf<String?>(null) }
+    var chatIdError by remember { mutableStateOf<String?>(null) }
+
+    fun validateToken(t: String): String? {
+        if (t.isBlank()) return "Bot Token is required"
+        // Basic Telegram bot token format: numbers:alphanumeric
+        if (!t.matches(Regex("^\\d+:[A-Za-z0-9_-]+$"))) {
+            return "Invalid format. Example: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+        }
+        return null
+    }
+
+    fun validateChatId(c: String): String? {
+        if (c.isBlank()) return "Chat ID is required"
+        if (!c.matches(Regex("^-?\\d+$"))) {
+            return "Chat ID must be a number (e.g. 123456789 or -1001234567890)"
+        }
+        return null
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -404,19 +427,29 @@ fun SetupDialog(
                 )
                 OutlinedTextField(
                     value = token,
-                    onValueChange = { token = it },
+                    onValueChange = {
+                        token = it
+                        tokenError = null
+                    },
                     label = { Text("Bot Token") },
                     placeholder = { Text("123456:ABC-DEF...") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = tokenError != null,
+                    supportingText = tokenError?.let { { Text(it) } }
                 )
                 OutlinedTextField(
                     value = chatId,
-                    onValueChange = { chatId = it },
+                    onValueChange = {
+                        chatId = it
+                        chatIdError = null
+                    },
                     label = { Text("Chat ID") },
                     placeholder = { Text("-1001234567890") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = chatIdError != null,
+                    supportingText = chatIdError?.let { { Text(it) } }
                 )
                 Text(
                     "Get your bot token from @BotFather on Telegram.\nChat ID can be found via @userinfobot.",
@@ -428,13 +461,31 @@ fun SetupDialog(
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(
-                    onClick = { onTest(token, chatId) },
+                    onClick = {
+                        val tErr = validateToken(token)
+                        val cErr = validateChatId(chatId)
+                        if (tErr != null || cErr != null) {
+                            tokenError = tErr
+                            chatIdError = cErr
+                            return@TextButton
+                        }
+                        onTest(token, chatId)
+                    },
                     enabled = token.isNotBlank() && chatId.isNotBlank()
                 ) {
                     Text("Test")
                 }
                 Button(
-                    onClick = { onConfirm(token, chatId) },
+                    onClick = {
+                        val tErr = validateToken(token)
+                        val cErr = validateChatId(chatId)
+                        if (tErr != null || cErr != null) {
+                            tokenError = tErr
+                            chatIdError = cErr
+                            return@Button
+                        }
+                        onConfirm(token, chatId)
+                    },
                     enabled = token.isNotBlank() && chatId.isNotBlank()
                 ) {
                     Text("Save")

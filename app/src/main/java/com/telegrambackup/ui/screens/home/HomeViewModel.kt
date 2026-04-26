@@ -45,6 +45,14 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
+        // Restore config from backup on startup
+        viewModelScope.launch {
+            try {
+                preferences.restoreFromBackupIfNeeded()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error restoring config from backup", e)
+            }
+        }
         observeStats()
         observeConfig()
     }
@@ -103,6 +111,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isScanning = true, error = null)
             try {
+                // Verify config is available before scanning
+                if (!repository.isConfigured()) {
+                    _uiState.value = _uiState.value.copy(
+                        isScanning = false,
+                        error = "Please configure your Telegram Bot Token and Chat ID first."
+                    )
+                    return@launch
+                }
+
                 val count = repository.scanAndRegisterNewFiles()
                 _uiState.value = _uiState.value.copy(isScanning = false)
                 if (count == 0) {
@@ -150,8 +167,12 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 preferences.setTelegramConfig(token, chatId)
+                Log.i(TAG, "Telegram config saved successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Config error", e)
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to save config: ${e.message}"
+                )
             }
         }
     }
@@ -159,13 +180,17 @@ class HomeViewModel @Inject constructor(
     fun testConnection(onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             try {
+                if (!repository.isConfigured()) {
+                    onResult(false, "Please enter Bot Token and Chat ID first.")
+                    return@launch
+                }
                 val result = repository.testConnection()
                 result.fold(
-                    onSuccess = { onResult(true, "Connection successful!") },
-                    onFailure = { onResult(false, it.message ?: "Connection failed") }
+                    onSuccess = { onResult(true, "Connection successful! Bot is working.") },
+                    onFailure = { onResult(false, "Connection failed: ${it.message}") }
                 )
             } catch (e: Exception) {
-                onResult(false, e.message ?: "Connection failed")
+                onResult(false, "Error: ${e.message ?: "Connection failed"}")
             }
         }
     }

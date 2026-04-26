@@ -1,6 +1,7 @@
 package com.telegrambackup.ui.screens.settings
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.telegrambackup.data.local.database.AppDatabase
@@ -32,10 +33,23 @@ class SettingsViewModel @Inject constructor(
     private val database: AppDatabase
 ) : AndroidViewModel(application) {
 
+    companion object {
+        private const val TAG = "SettingsViewModel"
+    }
+
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
+        // Restore config from backup on startup
+        viewModelScope.launch {
+            try {
+                preferences.restoreFromBackupIfNeeded()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error restoring config from backup", e)
+            }
+        }
+
         viewModelScope.launch {
             combine(
                 preferences.botToken,
@@ -91,19 +105,36 @@ class SettingsViewModel @Inject constructor(
     fun testConnection() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(testResult = "Testing...")
-            val result = repository.testConnection()
-            _uiState.value = _uiState.value.copy(
-                testResult = result.fold(
-                    onSuccess = { "✅ Connection successful!" },
-                    onFailure = { "❌ ${it.message}" }
+            try {
+                if (!repository.isConfigured()) {
+                    _uiState.value = _uiState.value.copy(
+                        testResult = "❌ Please enter Bot Token and Chat ID first."
+                    )
+                    return@launch
+                }
+                val result = repository.testConnection()
+                _uiState.value = _uiState.value.copy(
+                    testResult = result.fold(
+                        onSuccess = { "✅ Connection successful!" },
+                        onFailure = { "❌ ${it.message}" }
+                    )
                 )
-            )
+            } catch (e: Exception) {
+                Log.e(TAG, "Test connection error", e)
+                _uiState.value = _uiState.value.copy(
+                    testResult = "❌ Error: ${e.message ?: "Unknown error"}"
+                )
+            }
         }
     }
 
     fun resetDatabase() {
         viewModelScope.launch {
-            database.clearAllTables()
+            try {
+                database.clearAllTables()
+            } catch (e: Exception) {
+                Log.e(TAG, "Reset database error", e)
+            }
         }
     }
 }

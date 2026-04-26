@@ -18,5 +18,11 @@
 -keepattributes Signature
 -keep class com.telegrambackup.network.** { *; }
 
+# Keep Room enums (FileType, UploadStatus) - critical for Room type converters
+-keep enum com.telegrambackup.data.local.entity.** { *; }
+
+# Keep DataStore preferences
+-keep class androidx.datastore.** { *; }
+
 # Media3
 -keep class androidx.media3.** { *; }
