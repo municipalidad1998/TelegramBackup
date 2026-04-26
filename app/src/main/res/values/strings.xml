@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Telegram Backup</string>
+    <string name="channel_upload">Upload Service</string>
+    <string name="channel_audio">Audio Playback</string>
+</resources>
