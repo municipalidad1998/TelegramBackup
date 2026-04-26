@@ -214,33 +214,33 @@ fun ImageViewerScreen(
                         ),
                     contentScale = ContentScale.Fit
                 )
-            }
 
-            // Bottom info bar
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.7f))
-                    .padding(16.dp)
-            ) {
-                Text(
-                    backupFile.fileName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White
-                )
-                Text(
-                    "${FileUtils.formatFileSize(backupFile.fileSize)} • ${
-                        SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(backupFile.dateAdded)
-                    }",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
-                )
-                Row(
-                    modifier = Modifier.padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Bottom info bar
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .padding(16.dp)
                 ) {
-                    StatusChip(status = backupFile.uploadStatus)
+                    Text(
+                        backupFile.fileName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White
+                    )
+                    Text(
+                        "${FileUtils.formatFileSize(backupFile.fileSize)} • ${
+                            SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(backupFile.dateAdded)
+                        }",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                    Row(
+                        modifier = Modifier.padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        StatusChip(status = backupFile.uploadStatus)
+                    }
                 }
             }
         }

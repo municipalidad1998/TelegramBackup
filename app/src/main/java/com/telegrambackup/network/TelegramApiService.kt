@@ -1,3 +1,4 @@
+import okio.buffer
 package com.telegrambackup.network
 
 import com.google.gson.Gson
@@ -287,7 +288,7 @@ class ProgressRequestBody(
             }
         }
 
-        val bufferedSink = okio.buffer(countingSink)
+        val bufferedSink = countingSink.buffer()
         delegate.writeTo(bufferedSink)
         bufferedSink.flush()
     }

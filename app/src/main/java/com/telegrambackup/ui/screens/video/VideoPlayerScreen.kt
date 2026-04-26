@@ -238,7 +238,7 @@ fun VideoPlayerScreen(
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
+                        Divider(color = Color.White.copy(alpha = 0.2f))
 
                         LazyColumn {
                             items(uiState.playlist) { file ->

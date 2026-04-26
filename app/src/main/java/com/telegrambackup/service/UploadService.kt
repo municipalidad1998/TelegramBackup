@@ -34,7 +34,7 @@ class UploadService : Service() {
         when (action) {
             "upload_all" -> startUploadAll()
             "upload_single" -> {
-                val fileId = intent.getLongExtra("file_id", -1)
+                val fileId = intent?.getLongExtra("file_id", -1) ?: -1L
                 if (fileId != -1L) startUploadSingle(fileId)
             }
             "stop" -> stopUpload()
