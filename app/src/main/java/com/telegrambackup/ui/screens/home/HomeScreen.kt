@@ -3,13 +3,13 @@ package com.telegrambackup.ui.screens.home
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -46,10 +46,14 @@ fun HomeScreen(
 
     // Check initial permission state
     LaunchedEffect(Unit) {
-        permissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
-        } else {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        try {
+            permissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+            } else {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            }
+        } catch (e: Exception) {
+            Log.e("HomeScreen", "Permission check failed", e)
         }
     }
 
@@ -60,27 +64,18 @@ fun HomeScreen(
         permissionGranted = results.values.any { it }
     }
 
+    // Show setup dialog when not configured - use a stable trigger
     LaunchedEffect(uiState.isConfigured) {
-        if (!uiState.isConfigured) showSetupDialog = true
-    }
-
-    // Setup Dialog
-    if (showSetupDialog) {
-        SetupDialog(
-            onDismiss = { if (uiState.isConfigured) showSetupDialog = false },
-            onConfirm = { token, chatId ->
-                viewModel.setTelegramConfig(token, chatId)
-                showSetupDialog = false
-            },
-            onTest = { token, chatId ->
-                viewModel.setTelegramConfig(token, chatId)
-                viewModel.testConnection { success, msg ->
-                    showTestResult = Pair(success, msg)
-                }
+        try {
+            if (!uiState.isConfigured) {
+                showSetupDialog = true
             }
-        )
+        } catch (e: Exception) {
+            Log.e("HomeScreen", "Config check failed", e)
+        }
     }
 
+    // Test result dialog
     showTestResult?.let { (success, message) ->
         AlertDialog(
             onDismissRequest = { showTestResult = null },
@@ -90,6 +85,46 @@ fun HomeScreen(
                 TextButton(onClick = { showTestResult = null }) { Text("OK") }
             }
         )
+    }
+
+    // Setup Dialog - wrapped in try-catch to prevent crash
+    if (showSetupDialog) {
+        try {
+            SetupDialog(
+                onDismiss = {
+                    if (uiState.isConfigured) {
+                        showSetupDialog = false
+                    }
+                },
+                onConfirm = { token, chatId ->
+                    try {
+                        viewModel.setTelegramConfig(token, chatId)
+                        showSetupDialog = false
+                    } catch (e: Exception) {
+                        Log.e("HomeScreen", "Save config failed", e)
+                        showTestResult = Pair(false, "Error saving config: ${e.message}")
+                    }
+                },
+                onTest = { token, chatId ->
+                    try {
+                        viewModel.setTelegramConfig(token, chatId)
+                        viewModel.testConnection { success, msg ->
+                            showTestResult = Pair(success, msg)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("HomeScreen", "Test connection failed", e)
+                        showTestResult = Pair(false, "Error: ${e.message}")
+                    }
+                }
+            )
+        } catch (e: Exception) {
+            // If dialog itself crashes, show error and dismiss
+            Log.e("HomeScreen", "SetupDialog crashed", e)
+            showSetupDialog = false
+            LaunchedEffect(Unit) {
+                showTestResult = Pair(false, "Setup error. Please restart the app.")
+            }
+        }
     }
 
     LazyColumn(
@@ -112,8 +147,53 @@ fun HomeScreen(
             )
         }
 
+        // Not configured warning - always visible when not configured
+        if (!uiState.isConfigured) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Warning,
+                            null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Telegram not configured",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                "Set up your Bot Token and Chat ID to start backing up",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                        Button(
+                            onClick = { showSetupDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Setup")
+                        }
+                    }
+                }
+            }
+        }
+
         // Permission warning
-        if (!permissionGranted) {
+        if (uiState.isConfigured && !permissionGranted) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -270,7 +350,7 @@ fun HomeScreen(
                 Button(
                     onClick = { viewModel.uploadAll() },
                     modifier = Modifier.weight(1f),
-                    enabled = !uiState.isUploading && uiState.pendingFiles > 0
+                    enabled = !uiState.isUploading && uiState.pendingFiles > 0 && uiState.isConfigured
                 ) {
                     if (uiState.isUploading) {
                         CircularProgressIndicator(
@@ -398,11 +478,11 @@ fun SetupDialog(
     var chatId by remember { mutableStateOf("") }
     var tokenError by remember { mutableStateOf<String?>(null) }
     var chatIdError by remember { mutableStateOf<String?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
 
     fun validateToken(t: String): String? {
         if (t.isBlank()) return "Bot Token is required"
-        // Basic Telegram bot token format: numbers:alphanumeric
-        if (!t.matches(Regex("^\\d+:[A-Za-z0-9_-]+$"))) {
+        if (!t.matches(Regex("^\\d+:[A-Za-z0-9_-]{20,}$"))) {
             return "Invalid format. Example: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
         }
         return null
@@ -417,18 +497,21 @@ fun SetupDialog(
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            // Only allow dismiss if not saving
+            if (!isSaving) onDismiss()
+        },
         title = { Text("Telegram Bot Setup") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Enter your Telegram Bot Token and Chat ID to enable automatic backup.",
+                    "Enter your Telegram Bot Token and Chat ID.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 OutlinedTextField(
                     value = token,
                     onValueChange = {
-                        token = it
+                        token = it.trim()
                         tokenError = null
                     },
                     label = { Text("Bot Token") },
@@ -436,12 +519,13 @@ fun SetupDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = tokenError != null,
-                    supportingText = tokenError?.let { { Text(it) } }
+                    supportingText = tokenError?.let { { Text(it) } },
+                    enabled = !isSaving
                 )
                 OutlinedTextField(
                     value = chatId,
                     onValueChange = {
-                        chatId = it
+                        chatId = it.trim()
                         chatIdError = null
                     },
                     label = { Text("Chat ID") },
@@ -449,10 +533,11 @@ fun SetupDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = chatIdError != null,
-                    supportingText = chatIdError?.let { { Text(it) } }
+                    supportingText = chatIdError?.let { { Text(it) } },
+                    enabled = !isSaving
                 )
                 Text(
-                    "Get your bot token from @BotFather on Telegram.\nChat ID can be found via @userinfobot.",
+                    "Get your bot token from @BotFather on Telegram.\nChat ID: send a message to @userinfobot.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -469,9 +554,11 @@ fun SetupDialog(
                             chatIdError = cErr
                             return@TextButton
                         }
+                        isSaving = true
                         onTest(token, chatId)
+                        isSaving = false
                     },
-                    enabled = token.isNotBlank() && chatId.isNotBlank()
+                    enabled = token.isNotBlank() && chatId.isNotBlank() && !isSaving
                 ) {
                     Text("Test")
                 }
@@ -484,16 +571,28 @@ fun SetupDialog(
                             chatIdError = cErr
                             return@Button
                         }
+                        isSaving = true
                         onConfirm(token, chatId)
+                        isSaving = false
                     },
-                    enabled = token.isNotBlank() && chatId.isNotBlank()
+                    enabled = token.isNotBlank() && chatId.isNotBlank() && !isSaving
                 ) {
-                    Text("Save")
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Save")
+                    }
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(
+                onClick = { if (!isSaving) onDismiss() },
+                enabled = !isSaving
+            ) { Text("Cancel") }
         }
     )
 }

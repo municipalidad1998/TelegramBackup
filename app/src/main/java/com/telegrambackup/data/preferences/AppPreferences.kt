@@ -2,6 +2,8 @@ package com.telegrambackup.data.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Environment
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
@@ -9,6 +11,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +23,7 @@ class AppPreferences @Inject constructor(
 ) {
     private val ds get() = context.dataStore
 
-    // Backup SharedPreferences for critical config (survives DataStore issues)
+    // Backup SharedPreferences for critical config
     private val backupPrefs: SharedPreferences by lazy {
         context.getSharedPreferences("telegram_backup_prefs", Context.MODE_PRIVATE)
     }
@@ -30,36 +33,76 @@ class AppPreferences @Inject constructor(
     val chatId: Flow<String> = ds.data.map { it[CHAT_ID] ?: "" }
 
     suspend fun setTelegramConfig(token: String, chatId: String) {
-        // Save to DataStore
-        ds.edit {
-            it[BOT_TOKEN] = token
-            it[CHAT_ID] = chatId
+        try {
+            // Save to DataStore
+            ds.edit {
+                it[BOT_TOKEN] = token
+                it[CHAT_ID] = chatId
+            }
+        } catch (e: Exception) {
+            Log.e("AppPreferences", "DataStore save failed, using SharedPreferences only", e)
         }
-        // Also backup to SharedPreferences
-        backupPrefs.edit()
-            .putString("bot_token", token)
-            .putString("chat_id", chatId)
-            .apply()
+
+        // Always save to SharedPreferences (more reliable)
+        try {
+            backupPrefs.edit()
+                .putString("bot_token", token)
+                .putString("chat_id", chatId)
+                .apply()
+        } catch (e: Exception) {
+            Log.e("AppPreferences", "SharedPreferences save failed", e)
+        }
+
+        // Also save to external storage (survives uninstall)
+        try {
+            saveToExternalStorage(token, chatId)
+        } catch (e: Exception) {
+            Log.e("AppPreferences", "External storage backup failed", e)
+        }
+    }
+
+    /**
+     * Save config to Documents/TelegramBackup/config_backup.json
+     * This survives app uninstall on most devices.
+     */
+    private fun saveToExternalStorage(token: String, chatId: String) {
+        try {
+            val backupDir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+                "TelegramBackup"
+            )
+            backupDir.mkdirs()
+            val backupFile = File(backupDir, "config_backup.json")
+            val json = """{"bot_token":"$token","chat_id":"$chatId"}"""
+            backupFile.writeText(json)
+            Log.i("AppPreferences", "Config backed up to ${backupFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e("AppPreferences", "External backup failed", e)
+        }
     }
 
     /**
      * Restore config from SharedPreferences backup if DataStore is empty.
-     * Call this on app startup.
      */
     suspend fun restoreFromBackupIfNeeded() {
-        val currentToken = ds.data.first()[BOT_TOKEN]
-        val currentChatId = ds.data.first()[CHAT_ID]
+        try {
+            val currentToken = ds.data.first()[BOT_TOKEN]
+            val currentChatId = ds.data.first()[CHAT_ID]
 
-        if (currentToken.isNullOrEmpty() || currentChatId.isNullOrEmpty()) {
-            val backupToken = backupPrefs.getString("bot_token", "") ?: ""
-            val backupChatId = backupPrefs.getString("chat_id", "") ?: ""
+            if (currentToken.isNullOrEmpty() || currentChatId.isNullOrEmpty()) {
+                val backupToken = backupPrefs.getString("bot_token", "") ?: ""
+                val backupChatId = backupPrefs.getString("chat_id", "") ?: ""
 
-            if (backupToken.isNotEmpty() && backupChatId.isNotEmpty()) {
-                ds.edit {
-                    it[BOT_TOKEN] = backupToken
-                    it[CHAT_ID] = backupChatId
+                if (backupToken.isNotEmpty() && backupChatId.isNotEmpty()) {
+                    ds.edit {
+                        it[BOT_TOKEN] = backupToken
+                        it[CHAT_ID] = backupChatId
+                    }
+                    Log.i("AppPreferences", "Config restored from SharedPreferences backup")
                 }
             }
+        } catch (e: Exception) {
+            Log.e("AppPreferences", "Restore from backup failed", e)
         }
     }
 
