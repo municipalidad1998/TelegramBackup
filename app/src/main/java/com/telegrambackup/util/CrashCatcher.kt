@@ -2,47 +2,34 @@ package com.telegrambackup.util
 
 import android.util.Log
 import java.io.PrintWriter
-import java.io.StringWriter
+import java.io StringWriter
 
 /**
- * Global crash catcher that returns the full stacktrace as a string
- * instead of crashing the app.
+ * Utility for safe error handling that returns Result instead of throwing.
  */
 object CrashCatcher {
 
-    private const val TAG = "CrashCatcher"
-
     /**
-     * Run a block safely. If it throws, log the error and return the result of [onError].
+     * Run a block safely. If it throws, return Result.failure.
      */
-    inline fun <T> safe(
-        operation: String = "unknown",
-        onError: (String) -> T,
-        block: () -> T
-    ): T {
+    inline fun <T> safe(block: () -> T): Result<T> {
         return try {
-            block()
+            Result.success(block())
         } catch (e: Throwable) {
-            val stacktrace = getStacktrace(e)
-            Log.e(TAG, "Crash in $operation: $stacktrace")
-            onError("[$operation] ${e.javaClass.simpleName}: ${e.message}\n\n$stacktrace")
+            Log.e("CrashCatcher", "Safe call failed", e)
+            Result.failure(e)
         }
     }
 
     /**
      * Run a suspend block safely.
      */
-    suspend inline fun <T> safeSuspend(
-        operation: String = "unknown",
-        crossinline onError: (String) -> T,
-        crossinline block: suspend () -> T
-    ): T {
+    suspend inline fun <T> safeSuspend(crossinline block: suspend () -> T): Result<T> {
         return try {
-            block()
+            Result.success(block())
         } catch (e: Throwable) {
-            val stacktrace = getStacktrace(e)
-            Log.e(TAG, "Crash in $operation: $stacktrace")
-            onError("[$operation] ${e.javaClass.simpleName}: ${e.message}\n\n$stacktrace")
+            Log.e("CrashCatcher", "Safe suspend call failed", e)
+            Result.failure(e)
         }
     }
 

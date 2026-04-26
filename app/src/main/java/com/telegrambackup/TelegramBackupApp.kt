@@ -13,7 +13,6 @@ import java.io.PrintWriter
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
-import javax.inject.Inject
 
 @HiltAndroidApp
 class TelegramBackupApp : Application(), Configuration.Provider {
