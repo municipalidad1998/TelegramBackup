@@ -250,13 +250,27 @@ class TelegramApiService @Inject constructor() {
                     )
                     Result.success(result)
                 } else {
-                    Result.failure(Exception(parsed.description ?: "Unknown error"))
+                    Result.failure(Exception(parsed.description ?: "Telegram API error"))
                 }
             } else {
-                Result.failure(Exception("HTTP ${response.code}: $json"))
+                val errorMsg = try {
+                    val parsed = gson.fromJson(json, TelegramResponse::class.java)
+                    parsed.description ?: "HTTP ${response.code}"
+                } catch (_: Exception) {
+                    "HTTP ${response.code}: ${json.take(200)}"
+                }
+                Result.failure(Exception(errorMsg))
             }
+        } catch (e: java.net.UnknownHostException) {
+            Result.failure(Exception("No internet connection"))
+        } catch (e: java.net.SocketTimeoutException) {
+            Result.failure(Exception("Connection timed out"))
+        } catch (e: java.net.ConnectException) {
+            Result.failure(Exception("Cannot connect to Telegram servers"))
+        } catch (e: javax.net.ssl.SSLException) {
+            Result.failure(Exception("SSL error: ${e.message ?: "certificate problem"}"))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(e.message ?: "Network error: ${e.javaClass.simpleName}"))
         }
     }
 }

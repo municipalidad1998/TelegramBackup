@@ -106,17 +106,19 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(testResult = "Testing...")
             try {
-                if (!repository.isConfigured()) {
+                val token = _uiState.value.botToken
+                val chatId = _uiState.value.chatId
+                if (token.isBlank() || chatId.isBlank()) {
                     _uiState.value = _uiState.value.copy(
                         testResult = "❌ Please enter Bot Token and Chat ID first."
                     )
                     return@launch
                 }
-                val result = repository.testConnection()
+                val result = repository.testConnectionWith(token, chatId)
                 _uiState.value = _uiState.value.copy(
                     testResult = result.fold(
                         onSuccess = { "✅ Connection successful!" },
-                        onFailure = { "❌ ${it.message}" }
+                        onFailure = { "❌ ${it.message ?: "Unknown error"}" }
                     )
                 )
             } catch (e: Exception) {

@@ -177,17 +177,20 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun testConnection(onResult: (Boolean, String) -> Unit) {
+    fun testConnection(token: String, chatId: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             try {
-                if (!repository.isConfigured()) {
+                if (token.isBlank() || chatId.isBlank()) {
                     onResult(false, "Please enter Bot Token and Chat ID first.")
                     return@launch
                 }
-                val result = repository.testConnection()
+                // Save first and wait for it
+                preferences.setTelegramConfig(token, chatId)
+                // Then test with the same values
+                val result = repository.testConnectionWith(token, chatId)
                 result.fold(
                     onSuccess = { onResult(true, "Connection successful! Bot is working.") },
-                    onFailure = { onResult(false, "Connection failed: ${it.message}") }
+                    onFailure = { onResult(false, "Connection failed: ${it.message ?: "Unknown error"}") }
                 )
             } catch (e: Exception) {
                 onResult(false, "Error: ${e.message ?: "Connection failed"}")

@@ -251,6 +251,14 @@ class BackupRepository @Inject constructor(
         }
     }
 
+    suspend fun testConnectionWith(token: String, chatId: String): Result<Unit> {
+        return try {
+            telegramApi.testConnection(token, chatId).map { }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun isWifiConnected(): Boolean = networkUtils.isWifiConnected()
     suspend fun isConfigured(): Boolean = preferences.isConfigured.first()
 }

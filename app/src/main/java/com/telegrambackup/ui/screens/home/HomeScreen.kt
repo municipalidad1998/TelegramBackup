@@ -100,8 +100,7 @@ fun HomeScreen(
                 showSetupDialog = false
             },
             onTest = { token, chatId ->
-                viewModel.setTelegramConfig(token, chatId)
-                viewModel.testConnection { success, msg ->
+                viewModel.testConnection(token, chatId) { success, msg ->
                     showTestResult = Pair(success, msg)
                 }
             }
