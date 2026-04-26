@@ -87,44 +87,25 @@ fun HomeScreen(
         )
     }
 
-    // Setup Dialog - wrapped in try-catch to prevent crash
+    // Setup Dialog
     if (showSetupDialog) {
-        try {
-            SetupDialog(
-                onDismiss = {
-                    if (uiState.isConfigured) {
-                        showSetupDialog = false
-                    }
-                },
-                onConfirm = { token, chatId ->
-                    try {
-                        viewModel.setTelegramConfig(token, chatId)
-                        showSetupDialog = false
-                    } catch (e: Exception) {
-                        Log.e("HomeScreen", "Save config failed", e)
-                        showTestResult = Pair(false, "Error saving config: ${e.message}")
-                    }
-                },
-                onTest = { token, chatId ->
-                    try {
-                        viewModel.setTelegramConfig(token, chatId)
-                        viewModel.testConnection { success, msg ->
-                            showTestResult = Pair(success, msg)
-                        }
-                    } catch (e: Exception) {
-                        Log.e("HomeScreen", "Test connection failed", e)
-                        showTestResult = Pair(false, "Error: ${e.message}")
-                    }
+        SetupDialog(
+            onDismiss = {
+                if (uiState.isConfigured) {
+                    showSetupDialog = false
                 }
-            )
-        } catch (e: Exception) {
-            // If dialog itself crashes, show error and dismiss
-            Log.e("HomeScreen", "SetupDialog crashed", e)
-            showSetupDialog = false
-            LaunchedEffect(Unit) {
-                showTestResult = Pair(false, "Setup error. Please restart the app.")
+            },
+            onConfirm = { token, chatId ->
+                viewModel.setTelegramConfig(token, chatId)
+                showSetupDialog = false
+            },
+            onTest = { token, chatId ->
+                viewModel.setTelegramConfig(token, chatId)
+                viewModel.testConnection { success, msg ->
+                    showTestResult = Pair(success, msg)
+                }
             }
-        }
+        )
     }
 
     LazyColumn(
