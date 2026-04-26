@@ -1,4 +1,3 @@
-import okio.buffer
 package com.telegrambackup.network
 
 import com.google.gson.Gson
@@ -8,6 +7,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okio.buffer
 import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
