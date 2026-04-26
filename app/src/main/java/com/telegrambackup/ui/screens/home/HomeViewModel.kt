@@ -27,7 +27,8 @@ data class HomeUiState(
     val recentFiles: List<BackupFile> = emptyList(),
     val wifiOnly: Boolean = true,
     val autoBackup: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val restoreAttempted: Boolean = false  // Track if backup restore has been attempted
 )
 
 @HiltViewModel
@@ -45,12 +46,14 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        // Restore config from backup on startup
+        // Restore config from backup FIRST, then observe - this ensures config is available
         viewModelScope.launch {
             try {
                 preferences.restoreFromBackupIfNeeded()
             } catch (e: Exception) {
                 Log.e(TAG, "Error restoring config from backup", e)
+            } finally {
+                _uiState.value = _uiState.value.copy(restoreAttempted = true)
             }
         }
         observeStats()
@@ -120,7 +123,13 @@ class HomeViewModel @Inject constructor(
                     return@launch
                 }
 
-                val count = repository.scanAndRegisterNewFiles()
+                val count = try {
+                    repository.scanAndRegisterNewFiles()
+                } catch (e: OutOfMemoryError) {
+                    Log.e(TAG, "OOM during scan", e)
+                    0
+                }
+
                 _uiState.value = _uiState.value.copy(isScanning = false)
                 if (count == 0) {
                     _uiState.value = _uiState.value.copy(
@@ -132,6 +141,12 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isScanning = false,
                     error = "Storage permission denied. Please grant permission in Settings."
+                )
+            } catch (e: OutOfMemoryError) {
+                Log.e(TAG, "Out of memory during scan", e)
+                _uiState.value = _uiState.value.copy(
+                    isScanning = false,
+                    error = "Too many files to scan at once. Try again with fewer files."
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Scan error", e)

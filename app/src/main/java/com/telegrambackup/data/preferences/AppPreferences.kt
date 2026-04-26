@@ -43,12 +43,15 @@ class AppPreferences @Inject constructor(
             Log.e("AppPreferences", "DataStore save failed, using SharedPreferences only", e)
         }
 
-        // Always save to SharedPreferences (more reliable)
+        // Always save to SharedPreferences (more reliable) - use commit() for synchronous write
         try {
-            backupPrefs.edit()
+            val committed = backupPrefs.edit()
                 .putString("bot_token", token)
                 .putString("chat_id", chatId)
-                .apply()
+                .commit()  // Synchronous - ensures write completes before returning
+            if (!committed) {
+                Log.e("AppPreferences", "SharedPreferences commit returned false")
+            }
         } catch (e: Exception) {
             Log.e("AppPreferences", "SharedPreferences save failed", e)
         }
@@ -83,26 +86,67 @@ class AppPreferences @Inject constructor(
 
     /**
      * Restore config from SharedPreferences backup if DataStore is empty.
+     * Falls back to external storage if SharedPreferences is also empty.
      */
     suspend fun restoreFromBackupIfNeeded() {
         try {
-            val currentToken = ds.data.first()[BOT_TOKEN]
-            val currentChatId = ds.data.first()[CHAT_ID]
+            val currentToken = try { ds.data.first()[BOT_TOKEN] } catch (e: Exception) { null }
+            val currentChatId = try { ds.data.first()[CHAT_ID] } catch (e: Exception) { null }
 
             if (currentToken.isNullOrEmpty() || currentChatId.isNullOrEmpty()) {
-                val backupToken = backupPrefs.getString("bot_token", "") ?: ""
-                val backupChatId = backupPrefs.getString("chat_id", "") ?: ""
+                // Try SharedPreferences first
+                var backupToken = backupPrefs.getString("bot_token", "") ?: ""
+                var backupChatId = backupPrefs.getString("chat_id", "") ?: ""
+
+                // If SharedPreferences is also empty, try external storage
+                if (backupToken.isEmpty() || backupChatId.isEmpty()) {
+                    val external = readFromExternalStorage()
+                    if (external != null) {
+                        backupToken = external.first
+                        backupChatId = external.second
+                        // Also restore to SharedPreferences for next time
+                        backupPrefs.edit()
+                            .putString("bot_token", backupToken)
+                            .putString("chat_id", backupChatId)
+                            .commit()
+                    }
+                }
 
                 if (backupToken.isNotEmpty() && backupChatId.isNotEmpty()) {
                     ds.edit {
                         it[BOT_TOKEN] = backupToken
                         it[CHAT_ID] = backupChatId
                     }
-                    Log.i("AppPreferences", "Config restored from SharedPreferences backup")
+                    Log.i("AppPreferences", "Config restored from backup (token=${backupToken.take(5)}...)")
                 }
             }
         } catch (e: Exception) {
             Log.e("AppPreferences", "Restore from backup failed", e)
+        }
+    }
+
+    /**
+     * Read config from external storage backup file.
+     */
+    private fun readFromExternalStorage(): Pair<String, String>? {
+        return try {
+            val backupDir = java.io.File(
+                android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS),
+                "TelegramBackup"
+            )
+            val backupFile = java.io.File(backupDir, "config_backup.json")
+            if (!backupFile.exists()) return null
+
+            val json = backupFile.readText()
+            val tokenMatch = Regex(""""bot_token"\s*:\s*"([^"]*?)"""").find(json)
+            val chatIdMatch = Regex(""""chat_id"\s*:\s*"([^"]*?)"""").find(json)
+            val token = tokenMatch?.groupValues?.get(1) ?: ""
+            val chatId = chatIdMatch?.groupValues?.get(1) ?: ""
+
+            if (token.isNotEmpty() && chatId.isNotEmpty()) Pair(token, chatId) else null
+        } catch (e: Exception) {
+            Log.e("AppPreferences", "External storage read failed", e)
+            null
         }
     }
 

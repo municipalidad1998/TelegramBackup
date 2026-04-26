@@ -64,10 +64,10 @@ fun HomeScreen(
         permissionGranted = results.values.any { it }
     }
 
-    // Show setup dialog when not configured - use a stable trigger
-    LaunchedEffect(uiState.isConfigured) {
+    // Show setup dialog when not configured - but ONLY after restore has been attempted
+    LaunchedEffect(uiState.isConfigured, uiState.restoreAttempted) {
         try {
-            if (!uiState.isConfigured) {
+            if (uiState.restoreAttempted && !uiState.isConfigured) {
                 showSetupDialog = true
             }
         } catch (e: Exception) {
