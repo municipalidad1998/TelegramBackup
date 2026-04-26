@@ -242,20 +242,24 @@ class BackupRepository @Inject constructor(
     // ===================== Connection Test =====================
 
     suspend fun testConnection(): Result<Unit> {
-        return try {
-            val token = preferences.botToken.first()
-            val chatId = preferences.chatId.first()
-            telegramApi.testConnection(token, chatId).map { }
-        } catch (e: Exception) {
-            Result.failure(e)
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = preferences.botToken.first()
+                val chatId = preferences.chatId.first()
+                telegramApi.testConnection(token, chatId).map { }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 
     suspend fun testConnectionWith(token: String, chatId: String): Result<Unit> {
-        return try {
-            telegramApi.testConnection(token, chatId).map { }
-        } catch (e: Exception) {
-            Result.failure(e)
+        return withContext(Dispatchers.IO) {
+            try {
+                telegramApi.testConnection(token, chatId).map { }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 
