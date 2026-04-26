@@ -1,5 +1,10 @@
 package com.telegrambackup.ui.screens.home
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,8 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.telegrambackup.data.local.entity.BackupFile
@@ -32,8 +39,26 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var showSetupDialog by remember { mutableStateOf(false) }
     var showTestResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+    var permissionGranted by remember { mutableStateOf(false) }
+
+    // Check initial permission state
+    LaunchedEffect(Unit) {
+        permissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        permissionGranted = results.values.any { it }
+    }
 
     LaunchedEffect(uiState.isConfigured) {
         if (!uiState.isConfigured) showSetupDialog = true
@@ -56,7 +81,6 @@ fun HomeScreen(
         )
     }
 
-    // Test result snackbar
     showTestResult?.let { (success, message) ->
         AlertDialog(
             onDismissRequest = { showTestResult = null },
@@ -86,6 +110,62 @@ fun HomeScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+
+        // Permission warning
+        if (!permissionGranted) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Warning,
+                            null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Storage permission required",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                "Grant access to scan and backup your files",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    arrayOf(
+                                        Manifest.permission.READ_MEDIA_IMAGES,
+                                        Manifest.permission.READ_MEDIA_VIDEO,
+                                        Manifest.permission.READ_MEDIA_AUDIO
+                                    )
+                                } else {
+                                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                                }
+                                permissionLauncher.launch(perms)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Grant")
+                        }
+                    }
+                }
+            }
         }
 
         // Stats Cards
@@ -151,7 +231,22 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = { viewModel.scanFiles() },
+                    onClick = {
+                        if (!permissionGranted) {
+                            val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                arrayOf(
+                                    Manifest.permission.READ_MEDIA_IMAGES,
+                                    Manifest.permission.READ_MEDIA_VIDEO,
+                                    Manifest.permission.READ_MEDIA_AUDIO
+                                )
+                            } else {
+                                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                            }
+                            permissionLauncher.launch(perms)
+                        } else {
+                            viewModel.scanFiles()
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                     enabled = !uiState.isScanning
                 ) {
@@ -210,7 +305,7 @@ fun HomeScreen(
                             onCheckedChange = { viewModel.setWifiOnly(it) }
                         )
                     }
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -324,7 +419,7 @@ fun SetupDialog(
                     singleLine = true
                 )
                 Text(
-                    "Get your bot token from @BotFather on Telegram.\nChat ID can be found via @userinfobot or @getidsbot.",
+                    "Get your bot token from @BotFather on Telegram.\nChat ID can be found via @userinfobot.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

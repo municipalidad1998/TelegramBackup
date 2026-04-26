@@ -5,9 +5,8 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import com.telegrambackup.data.local.entity.BackupFile
+import android.util.Log
 import com.telegrambackup.data.local.entity.FileType
-import com.telegrambackup.data.local.entity.UploadStatus
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -28,31 +27,29 @@ data class ScannedFile(
 class MediaScanner @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    /**
-     * Scan all media files on device.
-     */
+    companion object {
+        private const val TAG = "MediaScanner"
+    }
+
     fun scanAllMedia(): List<ScannedFile> {
         val files = mutableListOf<ScannedFile>()
-        files.addAll(scanImages())
-        files.addAll(scanVideos())
-        files.addAll(scanAudio())
-        files.addAll(scanDocuments())
+        try { files.addAll(scanImages()) } catch (e: Exception) { Log.w(TAG, "Image scan failed", e) }
+        try { files.addAll(scanVideos()) } catch (e: Exception) { Log.w(TAG, "Video scan failed", e) }
+        try { files.addAll(scanAudio()) } catch (e: Exception) { Log.w(TAG, "Audio scan failed", e) }
+        try { files.addAll(scanDocuments()) } catch (e: Exception) { Log.w(TAG, "Doc scan failed", e) }
         return files
     }
 
     fun scanImages(): List<ScannedFile> = scanMedia(
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-        FileType.IMAGE
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI, FileType.IMAGE
     )
 
     fun scanVideos(): List<ScannedFile> = scanMedia(
-        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-        FileType.VIDEO
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI, FileType.VIDEO
     )
 
     fun scanAudio(): List<ScannedFile> = scanMedia(
-        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-        FileType.AUDIO
+        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, FileType.AUDIO
     )
 
     fun scanDocuments(): List<ScannedFile> {
@@ -78,32 +75,45 @@ class MediaScanner @Inject constructor(
                 "AND ${MediaStore.Files.FileColumns.MIME_TYPE} NOT LIKE 'audio/%' " +
                 "AND ${MediaStore.Files.FileColumns.SIZE} > 0"
 
-        context.contentResolver.query(collection, projection, selection, null,
-            "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
-        )?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-            val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
-            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
-            val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
-            val addedCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
-            val modifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
+        try {
+            context.contentResolver.query(collection, projection, selection, null,
+                "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
+            )?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+                val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+                val addedCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
+                val modifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
 
-            while (cursor.moveToNext()) {
-                val id = cursor.getLong(idCol)
-                val path = cursor.getString(dataCol) ?: continue
-                val name = cursor.getString(nameCol) ?: File(path).name
-                val size = cursor.getLong(sizeCol)
-                val mime = cursor.getString(mimeCol) ?: "application/octet-stream"
-                val added = cursor.getLong(addedCol) * 1000
-                val modified = cursor.getLong(modifiedCol) * 1000
+                while (cursor.moveToNext()) {
+                    try {
+                        val id = cursor.getLong(idCol)
+                        val path = cursor.getString(dataCol) ?: continue
+                        val name = cursor.getString(nameCol) ?: File(path).name
+                        val size = cursor.getLong(sizeCol)
+                        val mime = cursor.getString(mimeCol) ?: "application/octet-stream"
+                        val added = cursor.getLong(addedCol) * 1000
+                        val modified = cursor.getLong(modifiedCol) * 1000
 
-                val uri = ContentUris.withAppendedId(
-                    MediaStore.Files.getContentUri("external"), id
-                )
+                        if (size <= 0) continue
+                        if (!File(path).exists()) continue
 
-                files.add(ScannedFile(uri, path, name, size, mime, added, modified, FileType.DOCUMENT))
+                        val uri = ContentUris.withAppendedId(
+                            MediaStore.Files.getContentUri("external"), id
+                        )
+                        files.add(ScannedFile(uri, path, name, size, mime, added, modified, FileType.DOCUMENT))
+                    } catch (e: Exception) {
+                        // Skip individual file errors
+                        continue
+                    }
+                }
             }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Permission denied for documents", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Document scan error", e)
         }
         return files
     }
@@ -120,31 +130,42 @@ class MediaScanner @Inject constructor(
             MediaStore.MediaColumns.DATE_MODIFIED
         )
 
-        context.contentResolver.query(collection, projection, null, null,
-            "${MediaStore.MediaColumns.DATE_ADDED} DESC"
-        )?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-            val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
-            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-            val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
-            val addedCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
-            val modifiedCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+        try {
+            context.contentResolver.query(collection, projection, null, null,
+                "${MediaStore.MediaColumns.DATE_ADDED} DESC"
+            )?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                val addedCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+                val modifiedCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
 
-            while (cursor.moveToNext()) {
-                val id = cursor.getLong(idCol)
-                val path = cursor.getString(dataCol) ?: continue
-                val name = cursor.getString(nameCol) ?: File(path).name
-                val size = cursor.getLong(sizeCol)
-                val mime = cursor.getString(mimeCol) ?: "application/octet-stream"
-                val added = cursor.getLong(addedCol) * 1000
-                val modified = cursor.getLong(modifiedCol) * 1000
+                while (cursor.moveToNext()) {
+                    try {
+                        val id = cursor.getLong(idCol)
+                        val path = cursor.getString(dataCol) ?: continue
+                        val name = cursor.getString(nameCol) ?: File(path).name
+                        val size = cursor.getLong(sizeCol)
+                        val mime = cursor.getString(mimeCol) ?: "application/octet-stream"
+                        val added = cursor.getLong(addedCol) * 1000
+                        val modified = cursor.getLong(modifiedCol) * 1000
 
-                if (size <= 0) continue
+                        if (size <= 0) continue
+                        if (!File(path).exists()) continue
 
-                val uri = ContentUris.withAppendedId(collection, id)
-                files.add(ScannedFile(uri, path, name, size, mime, added, modified, fileType))
+                        val uri = ContentUris.withAppendedId(collection, id)
+                        files.add(ScannedFile(uri, path, name, size, mime, added, modified, fileType))
+                    } catch (e: Exception) {
+                        continue
+                    }
+                }
             }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Permission denied for ${fileType.name}", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Scan error for ${fileType.name}", e)
         }
         return files
     }
