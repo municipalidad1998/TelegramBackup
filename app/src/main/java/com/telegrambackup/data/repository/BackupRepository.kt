@@ -265,6 +265,10 @@ class BackupRepository @Inject constructor(
         }
     }
 
+    suspend fun resetStuckUploading() = withContext(Dispatchers.IO) {
+        try { backupFileDao.resetStuckUploading() } catch (e: Exception) { Log.e(TAG, "resetStuck error", e) }
+    }
+
     suspend fun syncUploadedFilesForChat(chatId: String) = withContext(Dispatchers.IO) {
         try {
             backupFileDao.resetUploadedForDifferentChat(chatId)
@@ -300,6 +304,58 @@ class BackupRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Error restoring from history", e)
             0
+        }
+    }
+
+    // Sync uploaded status from Telegram chat by matching file names in captions
+    suspend fun syncFromTelegram(): Pair<Int, String> = withContext(Dispatchers.IO) {
+        try {
+            val token = preferences.botToken.first()
+            val chatId = preferences.chatId.first()
+            if (token.isEmpty() || chatId.isEmpty()) return@withContext Pair(0, "Bot no configurado")
+
+            // Get all pending files for matching
+            val pendingFiles = backupFileDao.getPendingFiles().first()
+            if (pendingFiles.isEmpty()) return@withContext Pair(0, "No hay archivos pendientes")
+
+            // Build lookup by filename (caption contains "📁 fileName")
+            val byName = pendingFiles.associateBy { it.fileName.lowercase() }
+
+            // Get recent updates (last 100 messages sent TO the bot)
+            val updatesResult = telegramApi.getUpdates(token)
+            val updates = updatesResult.getOrNull() ?: emptyList()
+
+            var matched = 0
+            for (update in updates) {
+                val msg = update.message ?: continue
+                // Extract file info from message
+                val (fileId, uniqueId, fileSize, fileName) = when {
+                    msg.document != null -> listOf(msg.document.file_id, msg.document.file_unique_id, msg.document.file_size?.toString() ?: "", msg.document.file_name ?: "")
+                    msg.video != null -> listOf(msg.video.file_id, msg.video.file_unique_id, msg.video.file_size?.toString() ?: "", "")
+                    msg.audio != null -> listOf(msg.audio.file_id, msg.audio.file_unique_id, msg.audio.file_size?.toString() ?: "", "")
+                    msg.photo != null -> {
+                        val p = msg.photo.lastOrNull()
+                        listOf(p?.file_id ?: "", p?.file_unique_id ?: "", p?.file_size?.toString() ?: "", "")
+                    }
+                    else -> continue
+                }
+                if (fileId.isEmpty()) continue
+
+                // Match by file size or file name from the message caption
+                val matchedFile = byName[fileName.lowercase()]
+                    ?: pendingFiles.find { it.fileSize == fileSize.toLongOrNull() }
+                if (matchedFile != null) {
+                    backupFileDao.markUploaded(matchedFile.id, fileId, msg.message_id, System.currentTimeMillis(), chatId)
+                    historyStore.record(matchedFile.fileHash ?: "", matchedFile.filePath, fileId, chatId, msg.message_id)
+                    matched++
+                }
+            }
+
+            if (matched > 0) Pair(matched, "✅ $matched archivos detectados en Telegram")
+            else Pair(0, "No se encontraron archivos coincidentes en el historial reciente del bot")
+        } catch (e: Exception) {
+            Log.e(TAG, "syncFromTelegram error", e)
+            Pair(0, "Error: ${e.message}")
         }
     }
 

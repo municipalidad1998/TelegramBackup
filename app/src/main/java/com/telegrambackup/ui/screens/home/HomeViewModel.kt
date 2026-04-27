@@ -107,10 +107,14 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             if (!repository.isConfigured()) return@launch
             try {
+                // Cancel any leftover individual FileUploadWorker jobs from old builds
+                com.telegrambackup.worker.FileUploadWorker.cancelAll(getApplication())
+                repository.resetStuckUploading()
+
                 _uiState.value = _uiState.value.copy(isScanning = true)
                 repository.scanAndRegisterNewFiles()
                 _uiState.value = _uiState.value.copy(isScanning = false)
-                // Only start upload if not paused
+
                 if (!preferences.uploadPaused.first()) {
                     BatchUploadWorker.enqueue(getApplication())
                 }
@@ -133,7 +137,12 @@ class HomeViewModel @Inject constructor(
     fun pauseUpload() {
         viewModelScope.launch {
             preferences.setUploadPaused(true)
-            BatchUploadWorker.cancel(getApplication())
+            val ctx = getApplication<Application>()
+            // Cancel ALL workers (batch + any leftover individual workers)
+            BatchUploadWorker.cancel(ctx)
+            com.telegrambackup.worker.FileUploadWorker.cancelAll(ctx)
+            // Reset any UPLOADING → PENDING so the counter stops immediately
+            repository.resetStuckUploading()
         }
     }
 
@@ -148,6 +157,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val count = repository.markAllAsUploaded()
             onDone(count)
+        }
+    }
+
+    fun syncFromTelegram(onDone: (String) -> Unit) {
+        viewModelScope.launch {
+            val (_, message) = repository.syncFromTelegram()
+            onDone(message)
         }
     }
 

@@ -41,6 +41,16 @@ data class TelegramFile(
     val file_path: String?
 )
 
+data class TelegramUpdate(
+    val update_id: Long,
+    val message: TelegramMessage?
+)
+
+data class TelegramUpdatesResponse(
+    val ok: Boolean,
+    val result: List<TelegramUpdate>?
+)
+
 @Singleton
 class TelegramApiService @Inject constructor() {
 
@@ -173,6 +183,38 @@ class TelegramApiService @Inject constructor() {
             )
             .build()
 
+        return post<TelegramMessage>(url, body)
+    }
+
+    /**
+     * Get recent messages sent TO the bot (not by the bot).
+     * Used to detect recently uploaded files via caption matching.
+     */
+    suspend fun getUpdates(token: String, offset: Long = 0): Result<List<TelegramUpdate>> {
+        val url = "${baseUrl(token)}/getUpdates?offset=$offset&limit=100&timeout=0"
+        val request = Request.Builder().url(url).get().build()
+        return try {
+            val response = client.newCall(request).execute()
+            val json = response.body?.string() ?: ""
+            val parsed = gson.fromJson(json, TelegramUpdatesResponse::class.java)
+            if (parsed.ok) Result.success(parsed.result ?: emptyList())
+            else Result.failure(Exception("getUpdates failed"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Export chat messages using copyMessage trick: forward message_ids from chat to check existence.
+     * Returns file sizes found in the chat via the forward API.
+     */
+    suspend fun getChatMessageFileInfo(token: String, chatId: String, messageId: Long): Result<TelegramMessage> {
+        val url = "${baseUrl(token)}/forwardMessage"
+        val body = FormBody.Builder()
+            .add("chat_id", chatId)
+            .add("from_chat_id", chatId)
+            .add("message_id", messageId.toString())
+            .build()
         return post<TelegramMessage>(url, body)
     }
 

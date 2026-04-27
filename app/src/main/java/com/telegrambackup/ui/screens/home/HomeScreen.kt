@@ -319,7 +319,7 @@ fun HomeScreen(
             }
         }
 
-        // Banner: "Ya los subí antes" — shown when 0 uploaded but files exist
+        // Banner: recovery options when 0 uploaded but files exist
         if (uiState.uploadedFiles == 0 && uiState.totalFiles > 0 && uiState.isConfigured) {
             item {
                 Card(
@@ -328,31 +328,45 @@ fun HomeScreen(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
                     )
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Outlined.CloudDone,
-                            null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "¿Ya subiste estos archivos?",
-                                style = MaterialTheme.typography.titleSmall
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Outlined.CloudSync,
+                                null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(24.dp)
                             )
-                            Text(
-                                "Si ya están en Telegram, márcalos para no subirlos otra vez",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("¿Ya subiste estos archivos?", style = MaterialTheme.typography.titleSmall)
                         }
-                        Spacer(Modifier.width(8.dp))
-                        OutlinedButton(onClick = { showMarkAllDialog = true }) {
-                            Text("Ya los subí")
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Detecta qué archivos ya están en Telegram para no subirlos otra vez",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.syncFromTelegram { msg ->
+                                        showTestResult = Pair(msg.startsWith("✅"), msg)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Outlined.Sync, null, Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Sincronizar")
+                            }
+                            OutlinedButton(
+                                onClick = { showMarkAllDialog = true },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Outlined.CheckCircle, null, Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Ya los subí")
+                            }
                         }
                     }
                 }

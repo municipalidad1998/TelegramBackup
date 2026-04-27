@@ -70,7 +70,9 @@ class BatchUploadWorker @AssistedInject constructor(
         var done = 0
 
         for (file in pendingFiles) {
-            if (preferences.uploadPaused.first()) {
+            // Stop if worker was cancelled (pause button or system) or pause flag set
+            if (isStopped || preferences.uploadPaused.first()) {
+                backupFileDao.resetStuckUploading()
                 dismissNotification()
                 return@withContext Result.retry()
             }
