@@ -39,6 +39,7 @@ import com.telegrambackup.data.local.entity.Playlist
 import com.telegrambackup.data.local.entity.UploadStatus
 import com.telegrambackup.util.FileUtils
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 
 // Spotify brand colors
@@ -59,6 +60,13 @@ fun AudioScreen(
     var showCreatePlaylist by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showFullPlayer by remember { mutableStateOf(false) }
+
+    // Add-to-playlist sheet
+    var fileToAddToPlaylist by remember { mutableStateOf<BackupFile?>(null) }
+    var showAddToPlaylistSheet by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     // Single ExoPlayer instance to avoid conflicts
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
@@ -162,6 +170,7 @@ fun AudioScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -249,6 +258,10 @@ fun AudioScreen(
                                     onClick = {
                                         playAudioFile(file)
                                         showFullPlayer = true
+                                    },
+                                    onAddToPlaylist = {
+                                        fileToAddToPlaylist = file
+                                        showAddToPlaylistSheet = true
                                     }
                                 )
                             }
@@ -266,6 +279,196 @@ fun AudioScreen(
                                 onClick = { onNavigateToPlaylist(playlist.id) },
                                 onDelete = { viewModel.deletePlaylist(playlist) }
                             )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Add-to-playlist bottom sheet ──────────────────────────────────────────
+    if (showAddToPlaylistSheet && fileToAddToPlaylist != null) {
+        val songFile = fileToAddToPlaylist!!
+        ModalBottomSheet(
+            onDismissRequest = {
+                showAddToPlaylistSheet = false
+                fileToAddToPlaylist = null
+            },
+            containerColor = SpotifyCard
+        ) {
+            Column(modifier = Modifier.navigationBarsPadding()) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(SpotifyGreen, Color(0xFF0D6B31))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.MusicNote, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            songFile.fileName.substringBeforeLast("."),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            "Agregar a lista de reproducción",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SpotifyGray
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    color = Color.White.copy(alpha = 0.1f)
+                )
+                Spacer(Modifier.height(8.dp))
+
+                if (uiState.playlists.isEmpty()) {
+                    // No playlists yet — prompt to create one
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Outlined.PlaylistAdd,
+                            null,
+                            modifier = Modifier.size(48.dp),
+                            tint = SpotifyGray
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "Aún no tienes playlists",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Crea una para empezar a organizar tu música",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SpotifyGray,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                showAddToPlaylistSheet = false
+                                showCreatePlaylist = true
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen)
+                        ) {
+                            Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Crear playlist", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    // Option to create new playlist at top
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showAddToPlaylistSheet = false
+                                showCreatePlaylist = true
+                            }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color.White.copy(alpha = 0.07f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Filled.Add, null, tint = SpotifyGreen, modifier = Modifier.size(24.dp))
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            "Nueva lista de reproducción",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = Color.White.copy(alpha = 0.07f)
+                    )
+
+                    // Existing playlists
+                    LazyColumn(
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        items(uiState.playlists, key = { it.id }) { playlist ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.addToPlaylist(playlist.id, songFile.id)
+                                        showAddToPlaylistSheet = false
+                                        fileToAddToPlaylist = null
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                "\"${songFile.fileName.substringBeforeLast(".")}\" agregado a ${playlist.name}"
+                                            )
+                                        }
+                                    }
+                                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    SpotifyGreen.copy(alpha = 0.6f),
+                                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)
+                                                )
+                                            )
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.QueueMusic,
+                                        null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(14.dp))
+                                Text(
+                                    playlist.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
@@ -736,7 +939,8 @@ fun SpotifyMiniPlayer(
 fun SpotifyAudioListItem(
     file: BackupFile,
     isPlaying: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAddToPlaylist: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -807,7 +1011,22 @@ fun SpotifyAudioListItem(
                 tint = SpotifyGreen,
                 modifier = Modifier.size(22.dp)
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(4.dp))
+        }
+
+        // Add-to-playlist button (⋮)
+        onAddToPlaylist?.let { action ->
+            IconButton(
+                onClick = action,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    Icons.Filled.MoreVert,
+                    "Agregar a lista",
+                    tint = SpotifyGray,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }
