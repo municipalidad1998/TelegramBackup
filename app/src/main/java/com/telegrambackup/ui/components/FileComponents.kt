@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -181,6 +182,9 @@ fun MediaGridItem(
     file: BackupFile,
     onClick: () -> Unit
 ) {
+    val isLocallyAvailable = File(file.filePath).exists()
+    val isCloudOnly = !isLocallyAvailable && file.uploadStatus == UploadStatus.UPLOADED
+
     Card(
         modifier = Modifier
             .aspectRatio(1f)
@@ -188,13 +192,44 @@ fun MediaGridItem(
         shape = RoundedCornerShape(8.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (File(file.filePath).exists()) {
+            if (isLocallyAvailable) {
                 AsyncImage(
                     model = file.filePath,
                     contentDescription = file.fileName,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
+            } else if (isCloudOnly) {
+                // File deleted locally but backed up — show cloud placeholder
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFF1B3A4B),
+                                    Color(0xFF0D2233)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Filled.CloudDone,
+                            null,
+                            modifier = Modifier.size(36.dp),
+                            tint = Color(0xFF34D058)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "En la nube",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF34D058),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             } else {
                 Box(
                     modifier = Modifier
@@ -216,20 +251,45 @@ fun MediaGridItem(
                 }
             }
 
-            // Status indicator
-            if (file.uploadStatus == UploadStatus.UPLOADED) {
-                Icon(
-                    Icons.Filled.CloudDone,
-                    null,
+            // Upload status badge (top-right corner)
+            if (file.uploadStatus == UploadStatus.UPLOADED && !isCloudOnly) {
+                // Small green cloud badge for locally-available uploaded files
+                Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(4.dp)
-                        .size(16.dp),
-                    tint = MaterialTheme.colorScheme.secondary
-                )
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF34D058).copy(alpha = 0.85f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.CloudDone,
+                        null,
+                        modifier = Modifier.size(13.dp),
+                        tint = Color.White
+                    )
+                }
+            } else if (file.uploadStatus == UploadStatus.UPLOADING) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF2AABEE).copy(alpha = 0.85f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.CloudUpload,
+                        null,
+                        modifier = Modifier.size(13.dp),
+                        tint = Color.White
+                    )
+                }
             }
 
-            // Video duration indicator
+            // Video play indicator (bottom-right)
             if (file.fileType == FileType.VIDEO) {
                 Box(
                     modifier = Modifier

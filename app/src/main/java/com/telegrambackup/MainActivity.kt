@@ -7,19 +7,24 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.telegrambackup.ui.ThemeViewModel
 import com.telegrambackup.ui.navigation.AppNavigation
 import com.telegrambackup.ui.theme.TelegramBackupTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private val themeViewModel: ThemeViewModel by viewModels()
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -32,7 +37,9 @@ class MainActivity : ComponentActivity() {
         requestPermissions()
 
         setContent {
-            TelegramBackupTheme {
+            val darkMode by themeViewModel.darkMode.collectAsStateWithLifecycle()
+            // dynamicColor=false so the user's dark/light preference is always respected
+            TelegramBackupTheme(darkTheme = darkMode, dynamicColor = false) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
