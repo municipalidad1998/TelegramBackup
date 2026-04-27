@@ -29,8 +29,6 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # Build debug APK — signed automatically with the Android debug keystore,
-      # always installable on any Android device without extra configuration.
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon
 
@@ -39,7 +37,6 @@ jobs:
         run: |
           VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | cut -d'"' -f2)
           SHA=$(git rev-parse --short HEAD)
-          # Replace / with - so the branch name is safe in tag names
           BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '/' '-')
           TAG="apk-${BRANCH}-${SHA}"
           APK_NAME="TelegramBackup-v${VERSION}-${SHA}.apk"
@@ -54,40 +51,70 @@ jobs:
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk "dist/${{ steps.meta.outputs.apk_name }}"
 
-      # Delete any previous release/tag for this same branch+commit so we
-      # can recreate it cleanly (handles re-runs and force-pushes).
-      - name: Remove old release for this tag (if any)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete "${{ steps.meta.outputs.tag }}" --yes 2>/dev/null || true
-          git push origin ":refs/tags/${{ steps.meta.outputs.tag }}" 2>/dev/null || true
-
-      - name: Publish APK as GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: "TelegramBackup v${{ steps.meta.outputs.version }} · ${{ steps.meta.outputs.branch }} · ${{ steps.meta.outputs.sha }}"
-          prerelease: ${{ github.ref != 'refs/heads/main' }}
-          body: |
-            ## 📲 TelegramBackup v${{ steps.meta.outputs.version }}
+          name: ${{ steps.meta.outputs.apk_name }}
+          path: dist/${{ steps.meta.outputs.apk_name }}
+          retention-days: 30
 
-            | Campo | Valor |
-            |-------|-------|
-            | Branch | `${{ github.ref_name }}` |
-            | Commit | `${{ github.sha }}` |
-            | Build  | `#${{ github.run_number }}` |
-
-            ---
-
-            ### ⬇️ Instalación
-
-            1. Descarga **`${{ steps.meta.outputs.apk_name }}`** (botón de abajo)
-            2. En tu Android abre **Ajustes → Seguridad** y activa **"Instalar aplicaciones desconocidas"** para tu navegador/administrador de archivos
-            3. Abre el APK descargado y toca **Instalar**
-
-            > Este APK está firmado con la clave de depuración de Android (debug keystore) y es completamente instalable en cualquier dispositivo Android.
-          files: dist/${{ steps.meta.outputs.apk_name }}
-          fail_on_unmatched_files: true
+      - name: Publish APK as Gitea Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          APK_NAME="${{ steps.meta.outputs.apk_name }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+          BRANCH="${{ steps.meta.outputs.branch }}"
+          SHA="${{ steps.meta.outputs.sha }}"
+          API_URL="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}"
+
+          # Delete existing release for this tag (if any)
+          EXISTING_ID=$(curl -s \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            "${API_URL}/releases/tags/${TAG}" | jq -r '.id // empty')
+          if [ -n "$EXISTING_ID" ]; then
+            curl -s -X DELETE \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              "${API_URL}/releases/${EXISTING_ID}"
+          fi
+          curl -s -X DELETE \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            "${API_URL}/git/refs/tags/${TAG}" || true
+
+          # Determine if this is a pre-release
+          IS_PRERELEASE=true
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then IS_PRERELEASE=false; fi
+
+          # Create release
+          RELEASE=$(curl -s -X POST \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "${API_URL}/releases" \
+            -d "{
+              \"tag_name\": \"${TAG}\",
+              \"name\": \"TelegramBackup v${VERSION} · ${BRANCH} · ${SHA}\",
+              \"body\": \"## TelegramBackup v${VERSION}\n\n**Branch:** \`${BRANCH}\`  \n**Commit:** \`${SHA}\`\n\n---\n\n### Instalación\n1. Descarga el archivo **${APK_NAME}** de abajo\n2. En tu Android: **Ajustes → Seguridad → Instalar apps desconocidas**\n3. Abre el APK descargado y toca **Instalar**\",
+              \"prerelease\": ${IS_PRERELEASE}
+            }")
+
+          RELEASE_ID=$(echo "$RELEASE" | jq -r '.id')
+
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            echo "ERROR al crear release. Respuesta:"
+            echo "$RELEASE"
+            exit 1
+          fi
+
+          echo "Release creado con ID: $RELEASE_ID"
+
+          # Upload APK asset
+          UPLOAD=$(curl -s -X POST \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            "${API_URL}/releases/${RELEASE_ID}/assets?name=${APK_NAME}" \
+            --data-binary @"dist/${APK_NAME}")
+
+          echo "APK subido: $(echo "$UPLOAD" | jq -r '.browser_download_url // .name // "ok"')"
+          echo ""
+          echo "Release disponible en: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
