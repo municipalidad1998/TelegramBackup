@@ -99,7 +99,7 @@ class FileUploadWorker @AssistedInject constructor(
                         com.telegrambackup.data.local.entity.FileType.DOCUMENT -> msg.document?.file_id
                     } ?: ""
 
-                    backupFileDao.markUploaded(fileId, tgFileId, msg.message_id, System.currentTimeMillis())
+                    backupFileDao.markUploaded(fileId, tgFileId, msg.message_id, System.currentTimeMillis(), chatId)
                     Result.success()
                 },
                 onFailure = { e ->
