@@ -5,12 +5,10 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.telegrambackup.data.local.entity.BackupFile
-import com.telegrambackup.data.local.entity.FileType
-import com.telegrambackup.data.local.entity.UploadStatus
 import com.telegrambackup.data.preferences.AppPreferences
 import com.telegrambackup.data.repository.BackupRepository
 import com.telegrambackup.worker.AutoScanWorker
-import com.telegrambackup.worker.FileUploadWorker
+import com.telegrambackup.worker.BatchUploadWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -19,7 +17,6 @@ import javax.inject.Inject
 data class HomeUiState(
     val isConfigured: Boolean = false,
     val isScanning: Boolean = false,
-    val isUploading: Boolean = false,
     val isPaused: Boolean = false,
     val totalFiles: Int = 0,
     val uploadedFiles: Int = 0,
@@ -47,7 +44,6 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        // Restore config from backup FIRST, then observe - this ensures config is available
         viewModelScope.launch {
             try {
                 preferences.restoreFromBackupIfNeeded()
@@ -87,117 +83,74 @@ class HomeViewModel @Inject constructor(
 
     private fun observeConfig() {
         viewModelScope.launch {
-            try {
-                preferences.isConfigured.collect { configured ->
-                    _uiState.value = _uiState.value.copy(isConfigured = configured)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error observing config", e)
-            }
+            try { preferences.isConfigured.collect { _uiState.value = _uiState.value.copy(isConfigured = it) } }
+            catch (e: Exception) { Log.e(TAG, "Error", e) }
         }
         viewModelScope.launch {
-            try {
-                preferences.wifiOnly.collect { wifi ->
-                    _uiState.value = _uiState.value.copy(wifiOnly = wifi)
-                }
-            } catch (e: Exception) { Log.e(TAG, "Error", e) }
+            try { preferences.wifiOnly.collect { _uiState.value = _uiState.value.copy(wifiOnly = it) } }
+            catch (e: Exception) { Log.e(TAG, "Error", e) }
         }
         viewModelScope.launch {
-            try {
-                preferences.autoBackupEnabled.collect { auto ->
-                    _uiState.value = _uiState.value.copy(autoBackup = auto)
-                }
-            } catch (e: Exception) { Log.e(TAG, "Error", e) }
+            try { preferences.autoBackupEnabled.collect { _uiState.value = _uiState.value.copy(autoBackup = it) } }
+            catch (e: Exception) { Log.e(TAG, "Error", e) }
         }
         viewModelScope.launch {
-            try {
-                preferences.uploadPaused.collect { paused ->
-                    _uiState.value = _uiState.value.copy(isPaused = paused)
-                }
-            } catch (e: Exception) { Log.e(TAG, "Error", e) }
+            try { preferences.uploadPaused.collect { _uiState.value = _uiState.value.copy(isPaused = it) } }
+            catch (e: Exception) { Log.e(TAG, "Error", e) }
         }
     }
 
-    fun scanFiles() {
+    // Called once when app opens with permissions + config ready
+    fun startAutoBackup() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isScanning = true, error = null)
+            if (!repository.isConfigured()) return@launch
             try {
-                // Verify config is available before scanning
-                if (!repository.isConfigured()) {
-                    _uiState.value = _uiState.value.copy(
-                        isScanning = false,
-                        error = "Primero configura tu Token y Chat ID de Telegram."
-                    )
-                    return@launch
-                }
-
-                val count = try {
-                    repository.scanAndRegisterNewFiles()
-                } catch (e: OutOfMemoryError) {
-                    Log.e(TAG, "OOM during scan", e)
-                    0
-                }
-
+                _uiState.value = _uiState.value.copy(isScanning = true)
+                repository.scanAndRegisterNewFiles()
                 _uiState.value = _uiState.value.copy(isScanning = false)
-                if (count == 0) {
-                    _uiState.value = _uiState.value.copy(
-                        error = "No se encontraron archivos nuevos. Asegúrate de que los permisos de almacenamiento están concedidos."
-                    )
+                // Only start upload if not paused
+                if (!preferences.uploadPaused.first()) {
+                    BatchUploadWorker.enqueue(getApplication())
                 }
-            } catch (e: SecurityException) {
-                Log.e(TAG, "Permission denied", e)
-                _uiState.value = _uiState.value.copy(
-                    isScanning = false,
-                    error = "Permiso de almacenamiento denegado. Concede el permiso en Ajustes."
-                )
-            } catch (e: OutOfMemoryError) {
-                Log.e(TAG, "Out of memory during scan", e)
-                _uiState.value = _uiState.value.copy(
-                    isScanning = false,
-                    error = "Demasiados archivos para escanear a la vez. Inténtalo de nuevo."
-                )
             } catch (e: Exception) {
-                Log.e(TAG, "Scan error", e)
-                _uiState.value = _uiState.value.copy(
-                    isScanning = false,
-                    error = "Error al escanear: ${e.message ?: "Error desconocido"}"
-                )
-            }
-        }
-    }
-
-    fun uploadAll() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isUploading = true, error = null)
-            try {
-                repository.uploadAllPending()
-                _uiState.value = _uiState.value.copy(isUploading = false)
-            } catch (e: Exception) {
-                Log.e(TAG, "Upload error", e)
-                _uiState.value = _uiState.value.copy(
-                    isUploading = false,
-                    error = "Error al subir: ${e.message ?: "Error desconocido"}"
-                )
+                Log.e(TAG, "Auto-backup error", e)
+                _uiState.value = _uiState.value.copy(isScanning = false)
             }
         }
     }
 
     fun uploadSingle(fileId: Long) {
-        FileUploadWorker.enqueue(getApplication(), fileId)
+        viewModelScope.launch {
+            // Re-enqueue batch worker so it picks up this file
+            if (!preferences.uploadPaused.first()) {
+                BatchUploadWorker.enqueue(getApplication())
+            }
+        }
+    }
+
+    fun pauseUpload() {
+        viewModelScope.launch {
+            preferences.setUploadPaused(true)
+            BatchUploadWorker.cancel(getApplication())
+        }
+    }
+
+    fun resumeUpload() {
+        viewModelScope.launch {
+            preferences.setUploadPaused(false)
+            BatchUploadWorker.enqueue(getApplication())
+        }
     }
 
     fun setTelegramConfig(token: String, chatId: String) {
         viewModelScope.launch {
             try {
                 preferences.setTelegramConfig(token, chatId)
-                // Re-evaluate which files are already uploaded to THIS specific chat
                 repository.syncUploadedFilesForChat(chatId)
-                Log.i(TAG, "Telegram config saved and uploads synced for chat: $chatId")
+                Log.i(TAG, "Config saved, synced for chat: $chatId")
             } catch (e: Exception) {
                 Log.e(TAG, "Config error", e)
-                _uiState.value = _uiState.value.copy(
-                    error = "Error al guardar configuración: ${e.message}"
-                )
+                _uiState.value = _uiState.value.copy(error = "Error al guardar configuración: ${e.message}")
             }
         }
     }
@@ -209,9 +162,7 @@ class HomeViewModel @Inject constructor(
                     onResult(false, "Primero ingresa el Token del Bot y el Chat ID.")
                     return@launch
                 }
-                // Save first and wait for it
                 preferences.setTelegramConfig(token, chatId)
-                // Then test with the same values
                 val result = repository.testConnectionWith(token, chatId)
                 result.fold(
                     onSuccess = { onResult(true, "¡Conexión exitosa! El bot funciona correctamente.") },
@@ -219,32 +170,6 @@ class HomeViewModel @Inject constructor(
                 )
             } catch (e: Exception) {
                 onResult(false, "Error: ${e.message ?: "Conexión fallida"}")
-            }
-        }
-    }
-
-    fun pauseUpload() {
-        viewModelScope.launch {
-            preferences.setUploadPaused(true)
-            com.telegrambackup.worker.FileUploadWorker.cancelAll(getApplication())
-        }
-    }
-
-    fun resumeUpload() {
-        viewModelScope.launch {
-            preferences.setUploadPaused(false)
-            repository.enqueuePendingUploads(getApplication())
-        }
-    }
-
-    fun autoScan() {
-        viewModelScope.launch {
-            if (!repository.isConfigured()) return@launch
-            try {
-                repository.scanAndRegisterNewFiles()
-                repository.enqueuePendingUploads(getApplication())
-            } catch (e: Exception) {
-                Log.e(TAG, "Auto-scan error", e)
             }
         }
     }

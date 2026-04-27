@@ -43,6 +43,7 @@ fun HomeScreen(
     var showSetupDialog by remember { mutableStateOf(false) }
     var showTestResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
     var permissionGranted by remember { mutableStateOf(false) }
+    var autoStarted by remember { mutableStateOf(false) }
 
     // Check initial permission state
     LaunchedEffect(Unit) {
@@ -64,7 +65,7 @@ fun HomeScreen(
         permissionGranted = results.values.any { it }
     }
 
-    // Show setup dialog when not configured - but ONLY after restore has been attempted
+    // Show setup dialog when not configured
     LaunchedEffect(uiState.isConfigured, uiState.restoreAttempted) {
         try {
             if (uiState.restoreAttempted && !uiState.isConfigured) {
@@ -75,10 +76,11 @@ fun HomeScreen(
         }
     }
 
-    // Auto-scan when permissions + config are ready
+    // Auto-backup: start exactly ONCE when permissions + config are ready
     LaunchedEffect(permissionGranted, uiState.isConfigured, uiState.restoreAttempted) {
-        if (permissionGranted && uiState.isConfigured && uiState.restoreAttempted) {
-            viewModel.autoScan()
+        if (!autoStarted && permissionGranted && uiState.isConfigured && uiState.restoreAttempted) {
+            autoStarted = true
+            viewModel.startAutoBackup()
         }
     }
 

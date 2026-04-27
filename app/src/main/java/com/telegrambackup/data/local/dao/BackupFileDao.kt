@@ -54,6 +54,9 @@ interface BackupFileDao {
     @Query("UPDATE backup_files SET uploadStatus = 'PENDING', uploadProgress = 0, telegramFileId = NULL, telegramMessageId = NULL, uploadDate = NULL, uploadedToChatId = NULL WHERE uploadStatus = 'UPLOADED' AND uploadedToChatId IS NOT NULL AND uploadedToChatId != :chatId")
     suspend fun resetUploadedForDifferentChat(chatId: String)
 
+    @Query("UPDATE backup_files SET uploadStatus = 'PENDING', uploadProgress = 0 WHERE uploadStatus = 'UPLOADING'")
+    suspend fun resetStuckUploading()
+
     @Query("UPDATE backup_files SET uploadStatus = 'ERROR', errorMessage = :error WHERE id = :id")
     suspend fun markError(id: Long, error: String)
 
