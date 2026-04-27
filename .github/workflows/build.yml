@@ -2,13 +2,14 @@ name: Build APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'claude/**', 'feature/**', 'develop' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build & Upload APK
     runs-on: ubuntu-latest
 
     steps:
@@ -20,34 +21,41 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: gradle
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-home-cache-cleanup: true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Get branch name & commit info
+        id: info
+        run: |
+          echo "branch=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "version=$(grep versionName app/build.gradle.kts | head -1 | cut -d'"' -f2)" >> $GITHUB_OUTPUT
+
+      - name: Rename APK with branch + commit
+        run: |
+          mkdir -p artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk \
+            "artifacts/TelegramBackup-debug-${{ steps.info.outputs.version }}-${{ steps.info.outputs.sha_short }}.apk"
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: TelegramBackup-debug
-          path: app/build/outputs/apk/debug/*.apk
+          name: TelegramBackup-debug-${{ steps.info.outputs.sha_short }}
+          path: artifacts/*.apk
           retention-days: 30
 
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: TelegramBackup-release
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 90
-
   release:
+    name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -64,6 +72,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: gradle
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -72,30 +81,35 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Get version
         id: version
         run: echo "version=$(grep versionName app/build.gradle.kts | head -1 | cut -d'"' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Release v${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}-${{ github.run_number }}
+          name: "TelegramBackup v${{ steps.version.outputs.version }} (build ${{ github.run_number }})"
           body: |
-            ## Telegram Backup v${{ steps.version.outputs.version }}
-            
-            ### What's New
-            - Automatic file backup to Telegram
-            - Gallery with timeline view
-            - Video player with custom controls
-            - Audio player with playlists
-            - WiFi-only upload mode
-            - Dark mode support
-            
-            ### Installation
-            Download the APK below and install on your Android device.
+            ## TelegramBackup v${{ steps.version.outputs.version }}
+
+            ### Novedades
+            - Reproductor de video estilo HBO con rotación horizontal/vertical
+            - Reproductor de audio estilo Spotify con player completo
+            - Agregar canciones a listas de reproducción desde el botón ⋮
+            - Tema oscuro/claro configurable en tiempo real
+            - Badges de archivos subidos a la nube
+            - Archivos eliminados localmente siguen visibles si están en la nube
+            - Corrección: múltiples músicas no se reproducen simultáneamente
+
+            ### Instalación
+            1. Descarga el APK de abajo
+            2. En tu Android: Ajustes → Seguridad → Fuentes desconocidas (activar)
+            3. Abre el APK y toca Instalar
+
+            **Commit:** `${{ github.sha }}`
           files: |
             app/build/outputs/apk/release/*.apk
           draft: false
