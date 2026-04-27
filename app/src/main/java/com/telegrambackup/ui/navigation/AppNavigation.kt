@@ -14,10 +14,13 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import com.telegrambackup.data.local.entity.FileType
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector, val selectedIcon: ImageVector) {
     data object Home : Screen("home", "Inicio", Icons.Outlined.Home, Icons.Filled.Home)
-    data object Gallery : Screen("gallery", "Fotos", Icons.Outlined.Collections, Icons.Filled.Collections)
+    data object Photos : Screen("photos", "Fotos", Icons.Outlined.Image, Icons.Filled.Image)
+    data object Videos : Screen("videos", "Videos", Icons.Outlined.PlayCircle, Icons.Filled.PlayCircle)
+    data object Gallery : Screen("gallery", "Galería", Icons.Outlined.Collections, Icons.Filled.Collections)
     data object Audio : Screen("audio", "Música", Icons.Outlined.MusicNote, Icons.Filled.MusicNote)
     data object Settings : Screen("settings", "Ajustes", Icons.Outlined.Settings, Icons.Filled.Settings)
 
@@ -34,7 +37,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
     }
 }
 
-val bottomNavItems = listOf(Screen.Home, Screen.Gallery, Screen.Audio, Screen.Settings)
+val bottomNavItems = listOf(Screen.Home, Screen.Photos, Screen.Videos, Screen.Audio, Screen.Settings)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,7 +85,23 @@ fun AppNavigation() {
         ) {
             composable(Screen.Home.route) {
                 com.telegrambackup.ui.screens.home.HomeScreen(
-                    onNavigateToGallery = { navController.navigate(Screen.Gallery.route) },
+                    onNavigateToGallery = { navController.navigate(Screen.Photos.route) },
+                    onNavigateToVideo = { fileId -> navController.navigate(Screen.VideoPlayer.createRoute(fileId)) },
+                    onNavigateToImage = { fileId -> navController.navigate(Screen.ImageViewer.createRoute(fileId)) }
+                )
+            }
+
+            composable(Screen.Photos.route) {
+                com.telegrambackup.ui.screens.gallery.GalleryScreen(
+                    fixedFilter = FileType.IMAGE,
+                    onNavigateToVideo = { fileId -> navController.navigate(Screen.VideoPlayer.createRoute(fileId)) },
+                    onNavigateToImage = { fileId -> navController.navigate(Screen.ImageViewer.createRoute(fileId)) }
+                )
+            }
+
+            composable(Screen.Videos.route) {
+                com.telegrambackup.ui.screens.gallery.GalleryScreen(
+                    fixedFilter = FileType.VIDEO,
                     onNavigateToVideo = { fileId -> navController.navigate(Screen.VideoPlayer.createRoute(fileId)) },
                     onNavigateToImage = { fileId -> navController.navigate(Screen.ImageViewer.createRoute(fileId)) }
                 )

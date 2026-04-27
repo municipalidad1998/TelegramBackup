@@ -43,15 +43,29 @@ import java.util.*
 fun GalleryScreen(
     onNavigateToVideo: (Long) -> Unit,
     onNavigateToImage: (Long) -> Unit,
+    fixedFilter: FileType? = null,          // when set, hides chips and locks the filter
     viewModel: GalleryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedFilter by remember { mutableStateOf<FileType?>(null) }
+    var selectedFilter by remember { mutableStateOf(fixedFilter) }
+
+    // Apply fixed filter once on entry
+    LaunchedEffect(fixedFilter) {
+        if (fixedFilter != null) viewModel.setFilter(fixedFilter)
+    }
+
+    val screenTitle = when (fixedFilter) {
+        FileType.IMAGE -> "Fotos"
+        FileType.VIDEO -> "Videos"
+        FileType.DOCUMENT -> "Documentos"
+        FileType.AUDIO -> "Audio"
+        null -> "Galería"
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Top Bar
         TopAppBar(
-            title = { Text("Galería") },
+            title = { Text(screenTitle) },
             actions = {
                 IconButton(onClick = { viewModel.refresh() }) {
                     Icon(Icons.Outlined.Refresh, "Actualizar")
@@ -59,36 +73,38 @@ fun GalleryScreen(
             }
         )
 
-        // Filter chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FilterChip(
-                selected = selectedFilter == null,
-                onClick = { selectedFilter = null; viewModel.setFilter(null) },
-                label = { Text("Todos") }
-            )
-            FilterChip(
-                selected = selectedFilter == FileType.IMAGE,
-                onClick = { selectedFilter = FileType.IMAGE; viewModel.setFilter(FileType.IMAGE) },
-                label = { Text("Fotos") },
-                leadingIcon = { Icon(Icons.Outlined.Image, null, Modifier.size(16.dp)) }
-            )
-            FilterChip(
-                selected = selectedFilter == FileType.VIDEO,
-                onClick = { selectedFilter = FileType.VIDEO; viewModel.setFilter(FileType.VIDEO) },
-                label = { Text("Videos") },
-                leadingIcon = { Icon(Icons.Outlined.PlayCircle, null, Modifier.size(16.dp)) }
-            )
-            FilterChip(
-                selected = selectedFilter == FileType.DOCUMENT,
-                onClick = { selectedFilter = FileType.DOCUMENT; viewModel.setFilter(FileType.DOCUMENT) },
-                label = { Text("Documentos") },
-                leadingIcon = { Icon(Icons.Outlined.Description, null, Modifier.size(16.dp)) }
-            )
+        // Filter chips — only shown when NOT using a fixed filter
+        if (fixedFilter == null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = selectedFilter == null,
+                    onClick = { selectedFilter = null; viewModel.setFilter(null) },
+                    label = { Text("Todos") }
+                )
+                FilterChip(
+                    selected = selectedFilter == FileType.IMAGE,
+                    onClick = { selectedFilter = FileType.IMAGE; viewModel.setFilter(FileType.IMAGE) },
+                    label = { Text("Fotos") },
+                    leadingIcon = { Icon(Icons.Outlined.Image, null, Modifier.size(16.dp)) }
+                )
+                FilterChip(
+                    selected = selectedFilter == FileType.VIDEO,
+                    onClick = { selectedFilter = FileType.VIDEO; viewModel.setFilter(FileType.VIDEO) },
+                    label = { Text("Videos") },
+                    leadingIcon = { Icon(Icons.Outlined.PlayCircle, null, Modifier.size(16.dp)) }
+                )
+                FilterChip(
+                    selected = selectedFilter == FileType.DOCUMENT,
+                    onClick = { selectedFilter = FileType.DOCUMENT; viewModel.setFilter(FileType.DOCUMENT) },
+                    label = { Text("Documentos") },
+                    leadingIcon = { Icon(Icons.Outlined.Description, null, Modifier.size(16.dp)) }
+                )
+            }
         }
 
         // Timeline / Grid
