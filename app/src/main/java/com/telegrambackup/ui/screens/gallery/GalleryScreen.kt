@@ -24,8 +24,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -38,6 +40,19 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
+private fun openDocumentExternally(context: android.content.Context, file: BackupFile) {
+    val localFile = File(file.filePath)
+    if (!localFile.exists()) return
+    try {
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", localFile)
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, file.mimeType ?: "*/*")
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(android.content.Intent.createChooser(intent, "Abrir con"))
+    } catch (_: Exception) {}
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryScreen(
@@ -48,6 +63,7 @@ fun GalleryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedFilter by remember { mutableStateOf(fixedFilter) }
+    val context = LocalContext.current
 
     // Apply fixed filter once on entry
     LaunchedEffect(fixedFilter) {
@@ -178,6 +194,7 @@ fun GalleryScreen(
                                 when (file.fileType) {
                                     FileType.VIDEO -> onNavigateToVideo(file.id)
                                     FileType.IMAGE -> onNavigateToImage(file.id)
+                                    FileType.DOCUMENT -> openDocumentExternally(context, file)
                                     else -> onNavigateToImage(file.id)
                                 }
                             }

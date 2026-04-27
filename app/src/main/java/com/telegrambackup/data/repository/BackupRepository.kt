@@ -5,6 +5,7 @@ import android.util.Log
 import com.telegrambackup.data.local.dao.BackupFileDao
 import com.telegrambackup.data.local.dao.PlaylistDao
 import com.telegrambackup.data.local.entity.*
+import com.telegrambackup.worker.FileUploadWorker
 import com.telegrambackup.data.preferences.AppPreferences
 import com.telegrambackup.network.TelegramApiService
 import com.telegrambackup.util.FileUtils
@@ -269,6 +270,15 @@ class BackupRepository @Inject constructor(
             Log.i(TAG, "Reset uploaded files for chat: $chatId")
         } catch (e: Exception) {
             Log.e(TAG, "Error syncing uploaded files for chat", e)
+        }
+    }
+
+    suspend fun enqueuePendingUploads(context: Context) = withContext(Dispatchers.IO) {
+        try {
+            val pending = backupFileDao.getPendingFiles().first()
+            pending.forEach { FileUploadWorker.enqueue(context, it.id) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error enqueuing pending uploads", e)
         }
     }
 

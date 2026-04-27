@@ -162,6 +162,12 @@ class AppPreferences @Inject constructor(
         ds.edit { it[AUTO_BACKUP] = value }
     }
 
+    // Upload paused
+    val uploadPaused: Flow<Boolean> = ds.data.map { it[UPLOAD_PAUSED] ?: false }
+    suspend fun setUploadPaused(paused: Boolean) {
+        ds.edit { it[UPLOAD_PAUSED] = paused }
+    }
+
     // Theme
     val darkMode: Flow<Boolean> = ds.data.map { it[DARK_MODE] ?: true }
     suspend fun setDarkMode(value: Boolean) {
@@ -185,5 +191,6 @@ class AppPreferences @Inject constructor(
         private val AUTO_BACKUP = booleanPreferencesKey("auto_backup")
         private val DARK_MODE = booleanPreferencesKey("dark_mode")
         private val LAST_SYNC = longPreferencesKey("last_sync")
+        private val UPLOAD_PAUSED = booleanPreferencesKey("upload_paused")
     }
 }

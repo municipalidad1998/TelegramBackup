@@ -1,12 +1,14 @@
 package com.telegrambackup.worker
 
-import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
+import com.telegrambackup.MainActivity
 import com.telegrambackup.R
 import com.telegrambackup.TelegramBackupApp
 import com.telegrambackup.data.local.dao.BackupFileDao
@@ -36,6 +38,10 @@ class FileUploadWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val fileId = inputData.getLong("file_id", -1)
         if (fileId == -1L) return@withContext Result.failure()
+
+        if (preferences.uploadPaused.first()) {
+            return@withContext Result.retry()
+        }
 
         val wifiOnly = preferences.wifiOnly.first()
         if (wifiOnly && !networkUtils.isWifiConnected()) {
@@ -114,12 +120,21 @@ class FileUploadWorker @AssistedInject constructor(
     }
 
     private fun updateNotification(fileName: String, progress: Int) {
+        val tapIntent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val tapPendingIntent = PendingIntent.getActivity(
+            applicationContext, 0, tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(applicationContext, TelegramBackupApp.CHANNEL_UPLOAD)
             .setSmallIcon(android.R.drawable.stat_sys_upload)
-            .setContentTitle("Uploading")
+            .setContentTitle("Subiendo a Telegram")
             .setContentText("$fileName ($progress%)")
             .setProgress(100, progress, false)
             .setOngoing(true)
+            .setContentIntent(tapPendingIntent)
             .build()
 
         val manager = applicationContext.getSystemService(NotificationManager::class.java)
@@ -128,11 +143,13 @@ class FileUploadWorker @AssistedInject constructor(
 
     companion object {
         private const val UPLOAD_NOTIFICATION_ID = 1001
+        const val TAG_UPLOAD = "backup_upload"
 
         fun enqueue(context: Context, fileId: Long): OneTimeWorkRequest {
             val data = workDataOf("file_id" to fileId)
             val request = OneTimeWorkRequestBuilder<FileUploadWorker>()
                 .setInputData(data)
+                .addTag(TAG_UPLOAD)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -148,6 +165,10 @@ class FileUploadWorker @AssistedInject constructor(
                     request
                 )
             return request
+        }
+
+        fun cancelAll(context: Context) {
+            WorkManager.getInstance(context).cancelAllWorkByTag(TAG_UPLOAD)
         }
     }
 }

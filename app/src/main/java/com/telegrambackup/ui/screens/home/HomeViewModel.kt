@@ -20,6 +20,7 @@ data class HomeUiState(
     val isConfigured: Boolean = false,
     val isScanning: Boolean = false,
     val isUploading: Boolean = false,
+    val isPaused: Boolean = false,
     val totalFiles: Int = 0,
     val uploadedFiles: Int = 0,
     val pendingFiles: Int = 0,
@@ -28,7 +29,7 @@ data class HomeUiState(
     val wifiOnly: Boolean = true,
     val autoBackup: Boolean = true,
     val error: String? = null,
-    val restoreAttempted: Boolean = false  // Track if backup restore has been attempted
+    val restoreAttempted: Boolean = false
 )
 
 @HiltViewModel
@@ -105,6 +106,13 @@ class HomeViewModel @Inject constructor(
             try {
                 preferences.autoBackupEnabled.collect { auto ->
                     _uiState.value = _uiState.value.copy(autoBackup = auto)
+                }
+            } catch (e: Exception) { Log.e(TAG, "Error", e) }
+        }
+        viewModelScope.launch {
+            try {
+                preferences.uploadPaused.collect { paused ->
+                    _uiState.value = _uiState.value.copy(isPaused = paused)
                 }
             } catch (e: Exception) { Log.e(TAG, "Error", e) }
         }
@@ -211,6 +219,32 @@ class HomeViewModel @Inject constructor(
                 )
             } catch (e: Exception) {
                 onResult(false, "Error: ${e.message ?: "Conexión fallida"}")
+            }
+        }
+    }
+
+    fun pauseUpload() {
+        viewModelScope.launch {
+            preferences.setUploadPaused(true)
+            com.telegrambackup.worker.FileUploadWorker.cancelAll(getApplication())
+        }
+    }
+
+    fun resumeUpload() {
+        viewModelScope.launch {
+            preferences.setUploadPaused(false)
+            repository.enqueuePendingUploads(getApplication())
+        }
+    }
+
+    fun autoScan() {
+        viewModelScope.launch {
+            if (!repository.isConfigured()) return@launch
+            try {
+                repository.scanAndRegisterNewFiles()
+                repository.enqueuePendingUploads(getApplication())
+            } catch (e: Exception) {
+                Log.e(TAG, "Auto-scan error", e)
             }
         }
     }

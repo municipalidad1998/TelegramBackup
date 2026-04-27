@@ -20,6 +20,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
     data object Home : Screen("home", "Inicio", Icons.Outlined.Home, Icons.Filled.Home)
     data object Photos : Screen("photos", "Fotos", Icons.Outlined.Image, Icons.Filled.Image)
     data object Videos : Screen("videos", "Videos", Icons.Outlined.PlayCircle, Icons.Filled.PlayCircle)
+    data object Documents : Screen("documents", "Documentos", Icons.Outlined.Description, Icons.Filled.Description)
     data object Gallery : Screen("gallery", "Galería", Icons.Outlined.Collections, Icons.Filled.Collections)
     data object Audio : Screen("audio", "Música", Icons.Outlined.MusicNote, Icons.Filled.MusicNote)
     data object Settings : Screen("settings", "Ajustes", Icons.Outlined.Settings, Icons.Filled.Settings)
@@ -37,7 +38,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
     }
 }
 
-val bottomNavItems = listOf(Screen.Home, Screen.Photos, Screen.Videos, Screen.Audio, Screen.Settings)
+val bottomNavItems = listOf(Screen.Home, Screen.Photos, Screen.Videos, Screen.Documents, Screen.Audio)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,6 +103,14 @@ fun AppNavigation() {
             composable(Screen.Videos.route) {
                 com.telegrambackup.ui.screens.gallery.GalleryScreen(
                     fixedFilter = FileType.VIDEO,
+                    onNavigateToVideo = { fileId -> navController.navigate(Screen.VideoPlayer.createRoute(fileId)) },
+                    onNavigateToImage = { fileId -> navController.navigate(Screen.ImageViewer.createRoute(fileId)) }
+                )
+            }
+
+            composable(Screen.Documents.route) {
+                com.telegrambackup.ui.screens.gallery.GalleryScreen(
+                    fixedFilter = FileType.DOCUMENT,
                     onNavigateToVideo = { fileId -> navController.navigate(Screen.VideoPlayer.createRoute(fileId)) },
                     onNavigateToImage = { fileId -> navController.navigate(Screen.ImageViewer.createRoute(fileId)) }
                 )

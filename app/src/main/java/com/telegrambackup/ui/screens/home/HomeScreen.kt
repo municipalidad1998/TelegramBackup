@@ -75,6 +75,13 @@ fun HomeScreen(
         }
     }
 
+    // Auto-scan when permissions + config are ready
+    LaunchedEffect(permissionGranted, uiState.isConfigured, uiState.restoreAttempted) {
+        if (permissionGranted && uiState.isConfigured && uiState.restoreAttempted) {
+            viewModel.autoScan()
+        }
+    }
+
     // Test result dialog
     showTestResult?.let { (success, message) ->
         AlertDialog(
@@ -284,65 +291,57 @@ fun HomeScreen(
             }
         }
 
-        // Action Buttons
+        // Upload status + pause/resume
         item {
-            Row(
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                colors = CardDefaults.cardColors(
+                    containerColor = if (uiState.isPaused)
+                        MaterialTheme.colorScheme.errorContainer
+                    else
+                        MaterialTheme.colorScheme.primaryContainer
+                )
             ) {
-                Button(
-                    onClick = {
-                        if (!uiState.isConfigured) {
-                            showSetupDialog = true
-                            return@Button
-                        }
-                        if (!permissionGranted) {
-                            val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                arrayOf(
-                                    Manifest.permission.READ_MEDIA_IMAGES,
-                                    Manifest.permission.READ_MEDIA_VIDEO,
-                                    Manifest.permission.READ_MEDIA_AUDIO
-                                )
-                            } else {
-                                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-                            }
-                            permissionLauncher.launch(perms)
-                        } else {
-                            viewModel.scanFiles()
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !uiState.isScanning
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (uiState.isScanning) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
+                    Icon(
+                        if (uiState.isPaused) Icons.Filled.PauseCircle else Icons.Outlined.CloudUpload,
+                        null,
+                        tint = if (uiState.isPaused) MaterialTheme.colorScheme.error
+                               else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            if (uiState.isPaused) "Copia pausada"
+                            else if (uiState.isScanning) "Detectando archivos..."
+                            else if (uiState.pendingFiles > 0) "Subiendo ${uiState.pendingFiles} archivos..."
+                            else "Copia al día",
+                            style = MaterialTheme.typography.titleSmall
                         )
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Icon(Icons.Outlined.Refresh, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (uiState.isScanning) "Escaneando..." else "Escanear")
-                }
-
-                Button(
-                    onClick = { viewModel.uploadAll() },
-                    modifier = Modifier.weight(1f),
-                    enabled = !uiState.isUploading && uiState.pendingFiles > 0 && uiState.isConfigured
-                ) {
-                    if (uiState.isUploading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
+                        Text(
+                            if (uiState.isPaused) "Toca Reanudar para continuar la copia"
+                            else "La copia se realiza automáticamente en segundo plano",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(Modifier.width(8.dp))
                     }
-                    Icon(Icons.Outlined.CloudUpload, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(if (uiState.isUploading) "Subiendo..." else "Subir todo")
+                    Button(
+                        onClick = {
+                            if (uiState.isPaused) viewModel.resumeUpload()
+                            else viewModel.pauseUpload()
+                        },
+                        colors = if (uiState.isPaused)
+                            ButtonDefaults.buttonColors()
+                        else
+                            ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(if (uiState.isPaused) "Reanudar" else "Pausar")
+                    }
                 }
             }
         }
