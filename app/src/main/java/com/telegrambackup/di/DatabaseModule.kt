@@ -23,7 +23,8 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "telegram_backup.db"
-        ).fallbackToDestructiveMigration()
+        ).addMigrations(AppDatabase.MIGRATION_1_2)
+            .fallbackToDestructiveMigration()
             .build()
     }
 

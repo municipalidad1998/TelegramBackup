@@ -29,7 +29,8 @@ data class BackupFile(
     val uploadProgress: Int = 0,   // 0-100
     val uploadDate: Long? = null,
     val errorMessage: String? = null,
-    val thumbnailPath: String? = null
+    val thumbnailPath: String? = null,
+    val uploadedToChatId: String? = null   // which Telegram chat this was uploaded to
 )
 
 enum class FileType {

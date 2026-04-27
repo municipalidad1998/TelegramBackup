@@ -162,7 +162,7 @@ class BackupRepository @Inject constructor(
                             FileType.DOCUMENT -> msg.document?.file_id
                         } ?: ""
 
-                        backupFileDao.markUploaded(fileId, tgFileId, msg.message_id, System.currentTimeMillis())
+                        backupFileDao.markUploaded(fileId, tgFileId, msg.message_id, System.currentTimeMillis(), chatId)
                         Result.success(file.copy(
                             uploadStatus = UploadStatus.UPLOADED,
                             telegramFileId = tgFileId,
@@ -260,6 +260,15 @@ class BackupRepository @Inject constructor(
             } catch (e: Exception) {
                 Result.failure(e)
             }
+        }
+    }
+
+    suspend fun syncUploadedFilesForChat(chatId: String) = withContext(Dispatchers.IO) {
+        try {
+            backupFileDao.resetUploadedForDifferentChat(chatId)
+            Log.i(TAG, "Reset uploaded files for chat: $chatId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error syncing uploaded files for chat", e)
         }
     }
 

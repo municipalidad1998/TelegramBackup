@@ -16,10 +16,10 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector, val selectedIcon: ImageVector) {
-    data object Home : Screen("home", "Home", Icons.Outlined.Home, Icons.Filled.Home)
-    data object Gallery : Screen("gallery", "Gallery", Icons.Outlined.Collections, Icons.Filled.Collections)
-    data object Audio : Screen("audio", "Audio", Icons.Outlined.MusicNote, Icons.Filled.MusicNote)
-    data object Settings : Screen("settings", "Settings", Icons.Outlined.Settings, Icons.Filled.Settings)
+    data object Home : Screen("home", "Inicio", Icons.Outlined.Home, Icons.Filled.Home)
+    data object Gallery : Screen("gallery", "Fotos", Icons.Outlined.Collections, Icons.Filled.Collections)
+    data object Audio : Screen("audio", "Música", Icons.Outlined.MusicNote, Icons.Filled.MusicNote)
+    data object Settings : Screen("settings", "Ajustes", Icons.Outlined.Settings, Icons.Filled.Settings)
 
     data object VideoPlayer : Screen("video_player/{fileId}", "Video", Icons.Outlined.PlayCircle, Icons.Filled.PlayCircle) {
         fun createRoute(fileId: Long) = "video_player/$fileId"

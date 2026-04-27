@@ -79,7 +79,7 @@ fun HomeScreen(
     showTestResult?.let { (success, message) ->
         AlertDialog(
             onDismissRequest = { showTestResult = null },
-            title = { Text(if (success) "✅ Success" else "❌ Error") },
+            title = { Text(if (success) "✅ Conexión exitosa" else "❌ Error") },
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = { showTestResult = null }) { Text("OK") }
@@ -121,7 +121,7 @@ fun HomeScreen(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Your personal cloud",
+                "Tu nube personal",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -149,12 +149,12 @@ fun HomeScreen(
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Telegram not configured",
+                                "Telegram no configurado",
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
                             Text(
-                                "Set up your Bot Token and Chat ID to start backing up",
+                                "Configura tu Bot Token y Chat ID para empezar a hacer copias",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
                             )
@@ -165,7 +165,7 @@ fun HomeScreen(
                                 containerColor = MaterialTheme.colorScheme.error
                             )
                         ) {
-                            Text("Setup")
+                            Text("Configurar")
                         }
                     }
                 }
@@ -194,12 +194,12 @@ fun HomeScreen(
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Storage permission required",
+                                "Permiso de almacenamiento necesario",
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
                             Text(
-                                "Grant access to scan and backup your files",
+                                "Concede acceso para escanear y respaldar tus archivos",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
                             )
@@ -221,7 +221,7 @@ fun HomeScreen(
                                 containerColor = MaterialTheme.colorScheme.error
                             )
                         ) {
-                            Text("Grant")
+                            Text("Conceder")
                         }
                     }
                 }
@@ -243,14 +243,14 @@ fun HomeScreen(
                 )
                 StatCard(
                     modifier = Modifier.weight(1f),
-                    title = "Uploaded",
+                    title = "Subidos",
                     value = "${uiState.uploadedFiles}",
                     icon = Icons.Outlined.CloudDone,
                     color = MaterialTheme.colorScheme.secondary
                 )
                 StatCard(
                     modifier = Modifier.weight(1f),
-                    title = "Pending",
+                    title = "Pendientes",
                     value = "${uiState.pendingFiles}",
                     icon = Icons.Outlined.CloudUpload,
                     color = MaterialTheme.colorScheme.tertiary
@@ -273,7 +273,7 @@ fun HomeScreen(
                     Icon(Icons.Outlined.Storage, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text("Cloud Storage Used", style = MaterialTheme.typography.labelMedium)
+                        Text("Almacenamiento en nube usado", style = MaterialTheme.typography.labelMedium)
                         Text(
                             FileUtils.formatFileSize(uiState.totalSize),
                             style = MaterialTheme.typography.titleLarge,
@@ -324,7 +324,7 @@ fun HomeScreen(
                     }
                     Icon(Icons.Outlined.Refresh, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(if (uiState.isScanning) "Scanning..." else "Scan")
+                    Text(if (uiState.isScanning) "Escaneando..." else "Escanear")
                 }
 
                 Button(
@@ -342,7 +342,7 @@ fun HomeScreen(
                     }
                     Icon(Icons.Outlined.CloudUpload, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(if (uiState.isUploading) "Uploading..." else "Upload All")
+                    Text(if (uiState.isUploading) "Subiendo..." else "Subir todo")
                 }
             }
         }
@@ -357,9 +357,9 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("WiFi Only", style = MaterialTheme.typography.titleSmall)
+                            Text("Solo WiFi", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "Upload only on WiFi",
+                                "Subir solo con WiFi",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -376,9 +376,9 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Auto Backup", style = MaterialTheme.typography.titleSmall)
+                            Text("Copia automática", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "Automatically detect and upload new files",
+                                "Detectar y subir archivos nuevos automáticamente",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -400,7 +400,7 @@ fun HomeScreen(
             ) {
                 Icon(Icons.Outlined.Settings, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Configure Bot")
+                Text("Configurar Bot")
             }
         }
 
@@ -408,7 +408,7 @@ fun HomeScreen(
         if (uiState.recentFiles.isNotEmpty()) {
             item {
                 Text(
-                    "Recent Files",
+                    "Archivos recientes",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -461,17 +461,17 @@ fun SetupDialog(
     var isSaving by remember { mutableStateOf(false) }
 
     fun validateToken(t: String): String? {
-        if (t.isBlank()) return "Bot Token is required"
+        if (t.isBlank()) return "El Token del Bot es obligatorio"
         if (!t.matches(Regex("^\\d+:[A-Za-z0-9_-]{20,}$"))) {
-            return "Invalid format. Example: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+            return "Formato inválido. Ejemplo: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
         }
         return null
     }
 
     fun validateChatId(c: String): String? {
-        if (c.isBlank()) return "Chat ID is required"
+        if (c.isBlank()) return "El Chat ID es obligatorio"
         if (!c.matches(Regex("^-?\\d+$"))) {
-            return "Chat ID must be a number (e.g. 123456789 or -1001234567890)"
+            return "El Chat ID debe ser un número (ej. 123456789 o -1001234567890)"
         }
         return null
     }
@@ -481,11 +481,11 @@ fun SetupDialog(
             // Only allow dismiss if not saving
             if (!isSaving) onDismiss()
         },
-        title = { Text("Telegram Bot Setup") },
+        title = { Text("Configuración de Telegram") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Enter your Telegram Bot Token and Chat ID.",
+                    "Ingresa tu Token del Bot y el Chat ID de Telegram.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 OutlinedTextField(
@@ -494,7 +494,7 @@ fun SetupDialog(
                         token = it.trim()
                         tokenError = null
                     },
-                    label = { Text("Bot Token") },
+                    label = { Text("Token del Bot") },
                     placeholder = { Text("123456:ABC-DEF...") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
@@ -517,7 +517,7 @@ fun SetupDialog(
                     enabled = !isSaving
                 )
                 Text(
-                    "Get your bot token from @BotFather on Telegram.\nChat ID: send a message to @userinfobot.",
+                    "Obtén tu token en @BotFather en Telegram.\nPara el Chat ID, escríbele a @userinfobot.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -540,7 +540,7 @@ fun SetupDialog(
                     },
                     enabled = token.isNotBlank() && chatId.isNotBlank() && !isSaving
                 ) {
-                    Text("Test")
+                    Text("Probar")
                 }
                 Button(
                     onClick = {
@@ -563,7 +563,7 @@ fun SetupDialog(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Save")
+                        Text("Guardar")
                     }
                 }
             }
@@ -572,7 +572,7 @@ fun SetupDialog(
             TextButton(
                 onClick = { if (!isSaving) onDismiss() },
                 enabled = !isSaving
-            ) { Text("Cancel") }
+            ) { Text("Cancelar") }
         }
     )
 }

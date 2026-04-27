@@ -118,7 +118,7 @@ class HomeViewModel @Inject constructor(
                 if (!repository.isConfigured()) {
                     _uiState.value = _uiState.value.copy(
                         isScanning = false,
-                        error = "Please configure your Telegram Bot Token and Chat ID first."
+                        error = "Primero configura tu Token y Chat ID de Telegram."
                     )
                     return@launch
                 }
@@ -133,7 +133,7 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isScanning = false)
                 if (count == 0) {
                     _uiState.value = _uiState.value.copy(
-                        error = "No new files found. Make sure storage permissions are granted."
+                        error = "No se encontraron archivos nuevos. Asegúrate de que los permisos de almacenamiento están concedidos."
                     )
                 }
             } catch (e: SecurityException) {
@@ -182,11 +182,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 preferences.setTelegramConfig(token, chatId)
-                Log.i(TAG, "Telegram config saved successfully")
+                // Re-evaluate which files are already uploaded to THIS specific chat
+                repository.syncUploadedFilesForChat(chatId)
+                Log.i(TAG, "Telegram config saved and uploads synced for chat: $chatId")
             } catch (e: Exception) {
                 Log.e(TAG, "Config error", e)
                 _uiState.value = _uiState.value.copy(
-                    error = "Failed to save config: ${e.message}"
+                    error = "Error al guardar configuración: ${e.message}"
                 )
             }
         }
