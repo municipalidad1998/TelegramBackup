@@ -1,6 +1,5 @@
 package com.telegrambackup.ui.screens.audio
 
-import android.content.Context
 import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -21,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,7 +32,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.telegrambackup.data.local.entity.BackupFile
-import com.telegrambackup.data.local.entity.FileType
 import com.telegrambackup.data.local.entity.Playlist
 import com.telegrambackup.data.local.entity.UploadStatus
 import com.telegrambackup.util.FileUtils

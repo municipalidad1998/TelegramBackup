@@ -9,14 +9,14 @@ on:
 
 jobs:
   build:
-    name: Build & Release APK
+    name: Build & Publish APK
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -26,63 +26,68 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-home-cache-cleanup: true
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # Build debug APK — signed automatically with the Android debug keystore,
+      # always installable on any Android device without extra configuration.
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleDebug --no-daemon
 
-      - name: Get build info
-        id: info
+      - name: Collect build metadata
+        id: meta
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "version=$(grep versionName app/build.gradle.kts | head -1 | cut -d'"' -f2)" >> $GITHUB_OUTPUT
-          BRANCH="${GITHUB_REF_NAME//\//-}"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          echo "tag=build-${BRANCH}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "is_main=${{ github.ref == 'refs/heads/main' }}" >> $GITHUB_OUTPUT
+          VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | cut -d'"' -f2)
+          SHA=$(git rev-parse --short HEAD)
+          # Replace / with - so the branch name is safe in tag names
+          BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '/' '-')
+          TAG="apk-${BRANCH}-${SHA}"
+          APK_NAME="TelegramBackup-v${VERSION}-${SHA}.apk"
+          echo "version=$VERSION"   >> $GITHUB_OUTPUT
+          echo "sha=$SHA"           >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH"     >> $GITHUB_OUTPUT
+          echo "tag=$TAG"           >> $GITHUB_OUTPUT
+          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
 
       - name: Rename APK
         run: |
-          mkdir -p artifacts
-          cp app/build/outputs/apk/debug/app-debug.apk \
-            "artifacts/TelegramBackup-${{ steps.info.outputs.version }}-${{ steps.info.outputs.sha_short }}.apk"
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/${{ steps.meta.outputs.apk_name }}"
 
-      - name: Delete previous pre-release for this branch (if exists)
-        continue-on-error: true
+      # Delete any previous release/tag for this same branch+commit so we
+      # can recreate it cleanly (handles re-runs and force-pushes).
+      - name: Remove old release for this tag (if any)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete "${{ steps.info.outputs.tag }}" --yes 2>/dev/null || true
-          git push origin --delete "refs/tags/${{ steps.info.outputs.tag }}" 2>/dev/null || true
+          gh release delete "${{ steps.meta.outputs.tag }}" --yes 2>/dev/null || true
+          git push origin ":refs/tags/${{ steps.meta.outputs.tag }}" 2>/dev/null || true
 
-      - name: Create/Update pre-release with APK
+      - name: Publish APK as GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.info.outputs.tag }}
-          name: "APK – ${{ steps.info.outputs.branch }} @ ${{ steps.info.outputs.sha_short }}"
-          prerelease: ${{ steps.info.outputs.is_main == 'false' }}
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: "TelegramBackup v${{ steps.meta.outputs.version }} · ${{ steps.meta.outputs.branch }} · ${{ steps.meta.outputs.sha }}"
+          prerelease: ${{ github.ref != 'refs/heads/main' }}
           body: |
-            ## TelegramBackup v${{ steps.info.outputs.version }}
+            ## 📲 TelegramBackup v${{ steps.meta.outputs.version }}
 
-            **Branch:** `${{ github.ref_name }}`
-            **Commit:** `${{ github.sha }}`
-            **Fecha:** ${{ github.event.head_commit.timestamp }}
-
-            ### Cómo instalar
-            1. Descarga el APK de abajo ⬇️
-            2. En tu Android: **Ajustes → Seguridad → Instalar apps desconocidas** (activar para tu navegador)
-            3. Abre el archivo APK y toca **Instalar**
+            | Campo | Valor |
+            |-------|-------|
+            | Branch | `${{ github.ref_name }}` |
+            | Commit | `${{ github.sha }}` |
+            | Build  | `#${{ github.run_number }}` |
 
             ---
-            > Pre-release automático desde el branch de desarrollo.
-            > El APK está firmado con clave de depuración (debug key).
-          files: artifacts/*.apk
+
+            ### ⬇️ Instalación
+
+            1. Descarga **`${{ steps.meta.outputs.apk_name }}`** (botón de abajo)
+            2. En tu Android abre **Ajustes → Seguridad** y activa **"Instalar aplicaciones desconocidas"** para tu navegador/administrador de archivos
+            3. Abre el APK descargado y toca **Instalar**
+
+            > Este APK está firmado con la clave de depuración de Android (debug keystore) y es completamente instalable en cualquier dispositivo Android.
+          files: dist/${{ steps.meta.outputs.apk_name }}
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

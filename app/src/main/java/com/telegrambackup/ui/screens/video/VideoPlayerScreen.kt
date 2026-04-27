@@ -2,7 +2,6 @@ package com.telegrambackup.ui.screens.video
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
-import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
