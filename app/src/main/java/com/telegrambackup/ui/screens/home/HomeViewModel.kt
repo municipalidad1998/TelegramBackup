@@ -47,8 +47,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 preferences.restoreFromBackupIfNeeded()
+                // Restore upload status from external history file (survives DB reset)
+                repository.restoreFromHistory()
             } catch (e: Exception) {
-                Log.e(TAG, "Error restoring config from backup", e)
+                Log.e(TAG, "Error restoring from backup/history", e)
             } finally {
                 _uiState.value = _uiState.value.copy(restoreAttempted = true)
             }
@@ -139,6 +141,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             preferences.setUploadPaused(false)
             BatchUploadWorker.enqueue(getApplication())
+        }
+    }
+
+    fun markAllAsUploaded(onDone: (Int) -> Unit) {
+        viewModelScope.launch {
+            val count = repository.markAllAsUploaded()
+            onDone(count)
         }
     }
 

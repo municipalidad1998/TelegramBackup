@@ -10,6 +10,7 @@ import com.telegrambackup.network.TelegramApiService
 import com.telegrambackup.util.FileUtils
 import com.telegrambackup.util.MediaScanner
 import com.telegrambackup.util.NetworkUtils
+import com.telegrambackup.util.UploadHistoryStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -27,7 +28,8 @@ class BackupRepository @Inject constructor(
     private val telegramApi: TelegramApiService,
     private val preferences: AppPreferences,
     private val mediaScanner: MediaScanner,
-    private val networkUtils: NetworkUtils
+    private val networkUtils: NetworkUtils,
+    private val historyStore: UploadHistoryStore
 ) {
     companion object {
         private const val TAG = "BackupRepository"
@@ -269,6 +271,53 @@ class BackupRepository @Inject constructor(
             Log.i(TAG, "Reset uploaded files for chat: $chatId")
         } catch (e: Exception) {
             Log.e(TAG, "Error syncing uploaded files for chat", e)
+        }
+    }
+
+    // Restore uploaded status from external history file (survives DB reset/reinstall)
+    suspend fun restoreFromHistory(): Int = withContext(Dispatchers.IO) {
+        try {
+            val chatId = preferences.chatId.first()
+            val records = historyStore.readAll().filter { it.chatId == chatId }
+            if (records.isEmpty()) return@withContext 0
+
+            // Build lookup maps
+            val byHash = records.associateBy { it.fileHash }
+            val byPath = records.associateBy { it.filePath }
+
+            val allFiles = backupFileDao.getPendingFiles().first()
+            var restored = 0
+            for (file in allFiles) {
+                val record = (if (!file.fileHash.isNullOrEmpty()) byHash[file.fileHash] else null)
+                    ?: byPath[file.filePath]
+                if (record != null) {
+                    backupFileDao.markUploaded(file.id, record.telegramFileId, record.messageId, record.timestamp, chatId)
+                    restored++
+                }
+            }
+            Log.i(TAG, "Restored $restored files from upload history")
+            restored
+        } catch (e: Exception) {
+            Log.e(TAG, "Error restoring from history", e)
+            0
+        }
+    }
+
+    // Mark all pending files as uploaded (use when user confirms they're already in Telegram)
+    suspend fun markAllAsUploaded(): Int = withContext(Dispatchers.IO) {
+        try {
+            val chatId = preferences.chatId.first()
+            val pending = backupFileDao.getPendingFiles().first()
+            for (file in pending) {
+                backupFileDao.markUploaded(file.id, "", 0L, System.currentTimeMillis(), chatId)
+                // Record in history so future restores work
+                historyStore.record(file.fileHash ?: "", file.filePath, "", chatId, 0L)
+            }
+            Log.i(TAG, "Marked ${pending.size} files as uploaded")
+            pending.size
+        } catch (e: Exception) {
+            Log.e(TAG, "Error marking all as uploaded", e)
+            0
         }
     }
 

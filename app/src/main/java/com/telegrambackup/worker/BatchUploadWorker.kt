@@ -17,6 +17,7 @@ import com.telegrambackup.data.preferences.AppPreferences
 import com.telegrambackup.network.TelegramApiService
 import com.telegrambackup.util.FileUtils
 import com.telegrambackup.util.NetworkUtils
+import com.telegrambackup.util.UploadHistoryStore
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +32,8 @@ class BatchUploadWorker @AssistedInject constructor(
     private val backupFileDao: BackupFileDao,
     private val telegramApi: TelegramApiService,
     private val preferences: AppPreferences,
-    private val networkUtils: NetworkUtils
+    private val networkUtils: NetworkUtils,
+    private val historyStore: UploadHistoryStore
 ) : CoroutineWorker(appContext, workerParams) {
 
     companion object {
@@ -57,7 +59,6 @@ class BatchUploadWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        // Reset stuck UPLOADING files from previous interrupted sessions
         backupFileDao.resetStuckUploading()
 
         val token = preferences.botToken.first()
@@ -69,12 +70,10 @@ class BatchUploadWorker @AssistedInject constructor(
         var done = 0
 
         for (file in pendingFiles) {
-            // Check pause before each file
             if (preferences.uploadPaused.first()) {
                 dismissNotification()
                 return@withContext Result.retry()
             }
-            // Check WiFi constraint
             if (preferences.wifiOnly.first() && !networkUtils.isWifiConnected()) {
                 dismissNotification()
                 return@withContext Result.retry()
@@ -114,6 +113,8 @@ class BatchUploadWorker @AssistedInject constructor(
                             FileType.DOCUMENT -> msg.document?.file_id
                         } ?: ""
                         backupFileDao.markUploaded(file.id, tgFileId, msg.message_id, System.currentTimeMillis(), chatId)
+                        // Save to external history so it survives DB reset
+                        historyStore.record(file.fileHash ?: "", file.filePath, tgFileId, chatId, msg.message_id)
                         done++
                     },
                     onFailure = { e ->
@@ -152,7 +153,6 @@ class BatchUploadWorker @AssistedInject constructor(
     }
 
     private fun dismissNotification() {
-        applicationContext.getSystemService(NotificationManager::class.java)
-            .cancel(NOTIF_ID)
+        applicationContext.getSystemService(NotificationManager::class.java).cancel(NOTIF_ID)
     }
 }

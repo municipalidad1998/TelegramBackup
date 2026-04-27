@@ -42,6 +42,7 @@ fun HomeScreen(
     val context = LocalContext.current
     var showSetupDialog by remember { mutableStateOf(false) }
     var showTestResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+    var showMarkAllDialog by remember { mutableStateOf(false) }
     var permissionGranted by remember { mutableStateOf(false) }
     var autoStarted by remember { mutableStateOf(false) }
 
@@ -92,6 +93,31 @@ fun HomeScreen(
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = { showTestResult = null }) { Text("OK") }
+            }
+        )
+    }
+
+    // Mark-all-as-uploaded confirmation dialog
+    if (showMarkAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showMarkAllDialog = false },
+            title = { Text("¿Ya subiste estos archivos?") },
+            text = {
+                Text(
+                    "Esto marcará los ${uiState.pendingFiles} archivos como ya subidos sin volver a enviarlos a Telegram.\n\n" +
+                    "Úsalo solo si estás seguro de que ya están en tu chat de Telegram."
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showMarkAllDialog = false
+                    viewModel.markAllAsUploaded { count ->
+                        showTestResult = Pair(true, "✅ $count archivos marcados como subidos")
+                    }
+                }) { Text("Sí, ya los subí") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMarkAllDialog = false }) { Text("Cancelar") }
             }
         )
     }
@@ -288,6 +314,46 @@ fun HomeScreen(
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
+                    }
+                }
+            }
+        }
+
+        // Banner: "Ya los subí antes" — shown when 0 uploaded but files exist
+        if (uiState.uploadedFiles == 0 && uiState.totalFiles > 0 && uiState.isConfigured) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Outlined.CloudDone,
+                            null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "¿Ya subiste estos archivos?",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                "Si ya están en Telegram, márcalos para no subirlos otra vez",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(onClick = { showMarkAllDialog = true }) {
+                            Text("Ya los subí")
+                        }
                     }
                 }
             }
