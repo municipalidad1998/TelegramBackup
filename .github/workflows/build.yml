@@ -9,8 +9,11 @@ on:
 
 jobs:
   build:
-    name: Build & Upload APK
+    name: Build & Release APK
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -34,85 +37,52 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Get branch name & commit info
+      - name: Get build info
         id: info
         run: |
-          echo "branch=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "version=$(grep versionName app/build.gradle.kts | head -1 | cut -d'"' -f2)" >> $GITHUB_OUTPUT
+          BRANCH="${GITHUB_REF_NAME//\//-}"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "tag=build-${BRANCH}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "is_main=${{ github.ref == 'refs/heads/main' }}" >> $GITHUB_OUTPUT
 
-      - name: Rename APK with branch + commit
+      - name: Rename APK
         run: |
           mkdir -p artifacts
           cp app/build/outputs/apk/debug/app-debug.apk \
-            "artifacts/TelegramBackup-debug-${{ steps.info.outputs.version }}-${{ steps.info.outputs.sha_short }}.apk"
+            "artifacts/TelegramBackup-${{ steps.info.outputs.version }}-${{ steps.info.outputs.sha_short }}.apk"
 
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: TelegramBackup-debug-${{ steps.info.outputs.sha_short }}
-          path: artifacts/*.apk
-          retention-days: 30
+      - name: Delete previous pre-release for this branch (if exists)
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "${{ steps.info.outputs.tag }}" --yes 2>/dev/null || true
+          git push origin --delete "refs/tags/${{ steps.info.outputs.tag }}" 2>/dev/null || true
 
-  release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon
-
-      - name: Get version
-        id: version
-        run: echo "version=$(grep versionName app/build.gradle.kts | head -1 | cut -d'"' -f2)" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
+      - name: Create/Update pre-release with APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}-${{ github.run_number }}
-          name: "TelegramBackup v${{ steps.version.outputs.version }} (build ${{ github.run_number }})"
+          tag_name: ${{ steps.info.outputs.tag }}
+          name: "APK – ${{ steps.info.outputs.branch }} @ ${{ steps.info.outputs.sha_short }}"
+          prerelease: ${{ steps.info.outputs.is_main == 'false' }}
           body: |
-            ## TelegramBackup v${{ steps.version.outputs.version }}
+            ## TelegramBackup v${{ steps.info.outputs.version }}
 
-            ### Novedades
-            - Reproductor de video estilo HBO con rotación horizontal/vertical
-            - Reproductor de audio estilo Spotify con player completo
-            - Agregar canciones a listas de reproducción desde el botón ⋮
-            - Tema oscuro/claro configurable en tiempo real
-            - Badges de archivos subidos a la nube
-            - Archivos eliminados localmente siguen visibles si están en la nube
-            - Corrección: múltiples músicas no se reproducen simultáneamente
-
-            ### Instalación
-            1. Descarga el APK de abajo
-            2. En tu Android: Ajustes → Seguridad → Fuentes desconocidas (activar)
-            3. Abre el APK y toca Instalar
-
+            **Branch:** `${{ github.ref_name }}`
             **Commit:** `${{ github.sha }}`
-          files: |
-            app/build/outputs/apk/release/*.apk
-          draft: false
-          prerelease: false
+            **Fecha:** ${{ github.event.head_commit.timestamp }}
+
+            ### Cómo instalar
+            1. Descarga el APK de abajo ⬇️
+            2. En tu Android: **Ajustes → Seguridad → Instalar apps desconocidas** (activar para tu navegador)
+            3. Abre el archivo APK y toca **Instalar**
+
+            ---
+            > Pre-release automático desde el branch de desarrollo.
+            > El APK está firmado con clave de depuración (debug key).
+          files: artifacts/*.apk
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
