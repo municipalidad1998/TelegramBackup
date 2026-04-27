@@ -51,10 +51,10 @@ fun GalleryScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         // Top Bar
         TopAppBar(
-            title = { Text("Gallery") },
+            title = { Text("Galería") },
             actions = {
                 IconButton(onClick = { viewModel.refresh() }) {
-                    Icon(Icons.Outlined.Refresh, "Refresh")
+                    Icon(Icons.Outlined.Refresh, "Actualizar")
                 }
             }
         )
@@ -69,12 +69,12 @@ fun GalleryScreen(
             FilterChip(
                 selected = selectedFilter == null,
                 onClick = { selectedFilter = null; viewModel.setFilter(null) },
-                label = { Text("All") }
+                label = { Text("Todos") }
             )
             FilterChip(
                 selected = selectedFilter == FileType.IMAGE,
                 onClick = { selectedFilter = FileType.IMAGE; viewModel.setFilter(FileType.IMAGE) },
-                label = { Text("Photos") },
+                label = { Text("Fotos") },
                 leadingIcon = { Icon(Icons.Outlined.Image, null, Modifier.size(16.dp)) }
             )
             FilterChip(
@@ -86,7 +86,7 @@ fun GalleryScreen(
             FilterChip(
                 selected = selectedFilter == FileType.DOCUMENT,
                 onClick = { selectedFilter = FileType.DOCUMENT; viewModel.setFilter(FileType.DOCUMENT) },
-                label = { Text("Docs") },
+                label = { Text("Documentos") },
                 leadingIcon = { Icon(Icons.Outlined.Description, null, Modifier.size(16.dp)) }
             )
         }
@@ -125,12 +125,12 @@ fun GalleryScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "No files yet",
+                        "Sin archivos aún",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "Scan your device to find files",
+                        "Escanea tu dispositivo para encontrar archivos",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

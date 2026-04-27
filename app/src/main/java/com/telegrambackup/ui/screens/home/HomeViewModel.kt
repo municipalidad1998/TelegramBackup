@@ -140,19 +140,19 @@ class HomeViewModel @Inject constructor(
                 Log.e(TAG, "Permission denied", e)
                 _uiState.value = _uiState.value.copy(
                     isScanning = false,
-                    error = "Storage permission denied. Please grant permission in Settings."
+                    error = "Permiso de almacenamiento denegado. Concede el permiso en Ajustes."
                 )
             } catch (e: OutOfMemoryError) {
                 Log.e(TAG, "Out of memory during scan", e)
                 _uiState.value = _uiState.value.copy(
                     isScanning = false,
-                    error = "Too many files to scan at once. Try again with fewer files."
+                    error = "Demasiados archivos para escanear a la vez. Inténtalo de nuevo."
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Scan error", e)
                 _uiState.value = _uiState.value.copy(
                     isScanning = false,
-                    error = "Scan failed: ${e.message ?: "Unknown error"}"
+                    error = "Error al escanear: ${e.message ?: "Error desconocido"}"
                 )
             }
         }
@@ -168,7 +168,7 @@ class HomeViewModel @Inject constructor(
                 Log.e(TAG, "Upload error", e)
                 _uiState.value = _uiState.value.copy(
                     isUploading = false,
-                    error = "Upload failed: ${e.message ?: "Unknown error"}"
+                    error = "Error al subir: ${e.message ?: "Error desconocido"}"
                 )
             }
         }
@@ -198,7 +198,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 if (token.isBlank() || chatId.isBlank()) {
-                    onResult(false, "Please enter Bot Token and Chat ID first.")
+                    onResult(false, "Primero ingresa el Token del Bot y el Chat ID.")
                     return@launch
                 }
                 // Save first and wait for it
@@ -206,11 +206,11 @@ class HomeViewModel @Inject constructor(
                 // Then test with the same values
                 val result = repository.testConnectionWith(token, chatId)
                 result.fold(
-                    onSuccess = { onResult(true, "Connection successful! Bot is working.") },
-                    onFailure = { onResult(false, "Connection failed: ${it.message ?: "Unknown error"}") }
+                    onSuccess = { onResult(true, "¡Conexión exitosa! El bot funciona correctamente.") },
+                    onFailure = { onResult(false, "Conexión fallida: ${it.message ?: "Error desconocido"}") }
                 )
             } catch (e: Exception) {
-                onResult(false, "Error: ${e.message ?: "Connection failed"}")
+                onResult(false, "Error: ${e.message ?: "Conexión fallida"}")
             }
         }
     }

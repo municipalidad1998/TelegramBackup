@@ -30,7 +30,7 @@ fun SettingsScreen(
     ) {
         item {
             Text(
-                "Settings",
+                "Ajustes",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -56,10 +56,10 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Bot Token", style = MaterialTheme.typography.titleSmall)
+                            Text("Token del Bot", style = MaterialTheme.typography.titleSmall)
                             Text(
                                 if (uiState.botToken.isNotEmpty()) "••••••••${uiState.botToken.takeLast(8)}"
-                                else "Not configured",
+                                else "No configurado",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -76,7 +76,7 @@ fun SettingsScreen(
                         Column {
                             Text("Chat ID", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                uiState.chatId.ifEmpty { "Not configured" },
+                                uiState.chatId.ifEmpty { "No configurado" },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -91,7 +91,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Outlined.NetworkCheck, null, Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(if (uiState.testResult != null) uiState.testResult!! else "Test Connection")
+                        Text(if (uiState.testResult != null) uiState.testResult!! else "Probar conexión")
                     }
                 }
             }
@@ -100,7 +100,7 @@ fun SettingsScreen(
         // Backup Settings
         item {
             Text(
-                "Backup",
+                "Copia de seguridad",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -116,9 +116,9 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("WiFi Only", style = MaterialTheme.typography.titleSmall)
+                            Text("Solo WiFi", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "Upload only when connected to WiFi",
+                                "Subir solo con WiFi",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -137,9 +137,9 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Auto Backup", style = MaterialTheme.typography.titleSmall)
+                            Text("Copia automática", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "Automatically detect and upload new files",
+                                "Detectar y subir archivos nuevos automáticamente",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -156,7 +156,7 @@ fun SettingsScreen(
         // Appearance
         item {
             Text(
-                "Appearance",
+                "Apariencia",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -173,9 +173,9 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Dark Mode", style = MaterialTheme.typography.titleSmall)
+                        Text("Modo oscuro", style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "Use dark theme",
+                            "Usar tema oscuro",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -191,7 +191,7 @@ fun SettingsScreen(
         // Storage
         item {
             Text(
-                "Storage",
+                "Almacenamiento",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -205,7 +205,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Total Files", style = MaterialTheme.typography.bodyMedium)
+                        Text("Total archivos", style = MaterialTheme.typography.bodyMedium)
                         Text(
                             "${uiState.totalFiles}",
                             style = MaterialTheme.typography.bodyMedium,
@@ -217,7 +217,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Uploaded", style = MaterialTheme.typography.bodyMedium)
+                        Text("Subidos", style = MaterialTheme.typography.bodyMedium)
                         Text(
                             "${uiState.uploadedFiles}",
                             style = MaterialTheme.typography.bodyMedium,
@@ -230,7 +230,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Cloud Storage", style = MaterialTheme.typography.bodyMedium)
+                        Text("En la nube", style = MaterialTheme.typography.bodyMedium)
                         Text(
                             FileUtils.formatFileSize(uiState.totalSize),
                             style = MaterialTheme.typography.bodyMedium,
@@ -244,7 +244,7 @@ fun SettingsScreen(
         // Danger Zone
         item {
             Text(
-                "Danger Zone",
+                "Zona de peligro",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -260,12 +260,12 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Reset Database",
+                        "Resetear base de datos",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.error
                     )
                     Text(
-                        "Clear all local file records. Telegram uploads are preserved.",
+                        "Elimina todos los registros locales. Los archivos subidos a Telegram no se borran.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -278,7 +278,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Outlined.DeleteForever, null, Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Reset")
+                        Text("Resetear")
                     }
                 }
             }
@@ -299,18 +299,18 @@ fun SettingsScreen(
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
-            title = { Text("Reset Database?") },
-            text = { Text("This will clear all local file records. Files already uploaded to Telegram will not be affected, but the app will need to re-scan to rebuild the database.") },
+            title = { Text("¿Resetear base de datos?") },
+            text = { Text("Esto eliminará todos los registros locales. Los archivos ya subidos a Telegram no se verán afectados, pero la app necesitará re-escanear para reconstruir la base de datos.") },
             confirmButton = {
                 Button(
                     onClick = { viewModel.resetDatabase(); showResetDialog = false },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )
-                ) { Text("Reset") }
+                ) { Text("Resetear") }
             },
             dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showResetDialog = false }) { Text("Cancelar") }
             }
         )
     }
