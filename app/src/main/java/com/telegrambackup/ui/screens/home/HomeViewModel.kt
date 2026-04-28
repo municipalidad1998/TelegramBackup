@@ -158,12 +158,17 @@ class HomeViewModel @Inject constructor(
             com.telegrambackup.worker.FileUploadWorker.cancelAll(ctx)
             // Reset any UPLOADING → PENDING so the counter stops immediately
             repository.resetStuckUploading()
+            // Save current uploaded state to Telegram index so a new phone can
+            // detect all files already uploaded (even from a partial/paused batch)
+            try { repository.saveIndexToTelegram() } catch (_: Exception) {}
         }
     }
 
     fun resumeUpload() {
         viewModelScope.launch {
             preferences.setUploadPaused(false)
+            // Restore any missed uploads from Telegram index before resuming
+            try { repository.restoreFromTelegramIndex() } catch (_: Exception) {}
             BatchUploadWorker.enqueue(getApplication())
         }
     }

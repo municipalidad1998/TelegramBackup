@@ -73,6 +73,8 @@ class BatchUploadWorker @AssistedInject constructor(
             // Stop if worker was cancelled (pause button or system) or pause flag set
             if (isStopped || preferences.uploadPaused.first()) {
                 backupFileDao.resetStuckUploading()
+                // Persist current index so a new phone sees all files uploaded so far
+                saveCurrentIndex(token, chatId)
                 dismissNotification()
                 return@withContext Result.retry()
             }
@@ -131,31 +133,32 @@ class BatchUploadWorker @AssistedInject constructor(
             }
         }
 
-        // Save index to Telegram so new phone can detect uploads
-        try {
-            val uploaded = backupFileDao.getAllUploadedFiles()
-            if (uploaded.isNotEmpty()) {
-                val entries = uploaded.joinToString("\n") { f ->
-                    "${f.fileHash ?: ""}|${f.telegramFileId ?: ""}|${f.fileName}|${f.fileSize}|$chatId"
-                }
-                val json = buildString {
-                    append("{\"version\":2,\"chatId\":\"$chatId\",\"generated\":${System.currentTimeMillis()},")
-                    append("\"count\":${uploaded.size},")
-                    append("\"entries\":\"")
-                    append(entries.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n"))
-                    append("\"}")
-                }
-                val indexResult = telegramApi.sendJsonAsDocument(token, chatId, json, "telegram_backup_index.json")
-                indexResult.getOrNull()?.let { msg ->
-                    telegramApi.pinChatMessage(token, chatId, msg.message_id)
-                }
-            }
-        } catch (e: Exception) {
-            Log.w("BatchUpload", "Index save failed: ${e.message}")
-        }
+        // Save index so new phone can detect all uploaded files
+        saveCurrentIndex(token, chatId)
 
         dismissNotification()
         Result.success()
+    }
+
+    private suspend fun saveCurrentIndex(token: String, chatId: String) {
+        try {
+            val uploaded = backupFileDao.getAllUploadedFiles()
+            if (uploaded.isEmpty()) return
+            val entries = uploaded.joinToString("\n") { f ->
+                "${f.fileHash ?: ""}|${f.telegramFileId ?: ""}|${f.fileName}|${f.fileSize}|$chatId"
+            }
+            val json = buildString {
+                append("{\"version\":2,\"chatId\":\"$chatId\",\"generated\":${System.currentTimeMillis()},")
+                append("\"count\":${uploaded.size},")
+                append("\"entries\":\"")
+                append(entries.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n"))
+                append("\"}")
+            }
+            val result = telegramApi.sendJsonAsDocument(token, chatId, json, "telegram_backup_index.json")
+            result.getOrNull()?.let { msg -> telegramApi.pinChatMessage(token, chatId, msg.message_id) }
+        } catch (e: Exception) {
+            Log.w("BatchUpload", "Index save failed: ${e.message}")
+        }
     }
 
     private fun updateNotification(fileName: String, progress: Int, done: Int, total: Int) {
