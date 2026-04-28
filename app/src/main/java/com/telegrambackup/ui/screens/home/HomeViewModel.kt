@@ -121,6 +121,13 @@ class HomeViewModel @Inject constructor(
 
                 _uiState.value = _uiState.value.copy(isScanning = true)
                 repository.scanAndRegisterNewFiles()
+
+                // After scan the DB is fully populated; now match against all restore sources
+                // so that files already uploaded (even after reinstall) are marked UPLOADED
+                // before the batch worker starts, preventing redundant re-uploads.
+                repository.restoreFromHistory()
+                repository.restoreFromTelegramIndex()
+
                 _uiState.value = _uiState.value.copy(isScanning = false)
 
                 if (!preferences.uploadPaused.first()) {
