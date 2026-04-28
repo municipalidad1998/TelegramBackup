@@ -12,7 +12,7 @@ object FileUtils {
     fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         FileInputStream(file).use { fis ->
-            val buffer = ByteArray(8192)
+            val buffer = ByteArray(65536) // 64 KB — fewer syscalls, less CPU vs 8 KB
             var bytesRead: Int
             while (fis.read(buffer).also { bytesRead = it } != -1) {
                 digest.update(buffer, 0, bytesRead)

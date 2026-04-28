@@ -18,9 +18,11 @@ import com.telegrambackup.network.TelegramApiService
 import com.telegrambackup.util.FileUtils
 import com.telegrambackup.util.NetworkUtils
 import com.telegrambackup.util.UploadHistoryStore
+import android.os.Process
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -59,6 +61,10 @@ class BatchUploadWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        // Run at background priority so uploads don't compete with the UI or
+        // other foreground apps, reducing CPU heat and battery drain
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+
         backupFileDao.resetStuckUploading()
 
         val token = preferences.botToken.first()
@@ -131,6 +137,10 @@ class BatchUploadWorker @AssistedInject constructor(
                 backupFileDao.markError(file.id, e.message ?: "Error desconocido")
                 Log.e("BatchUpload", "Exception on ${file.fileName}", e)
             }
+
+            // Brief cooldown between files — lets the CPU/radio cool down and
+            // prevents sustained 100% load that heats the phone
+            delay(200)
         }
 
         // Save index so new phone can detect all uploaded files

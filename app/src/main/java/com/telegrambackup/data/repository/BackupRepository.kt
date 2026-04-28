@@ -12,6 +12,7 @@ import com.telegrambackup.util.MediaScanner
 import com.telegrambackup.util.NetworkUtils
 import com.telegrambackup.util.UploadHistoryStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import android.os.Process
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -54,6 +55,9 @@ class BackupRepository @Inject constructor(
     // ===================== Scan & Register =====================
 
     suspend fun scanAndRegisterNewFiles(): Int = withContext(Dispatchers.IO) {
+        // Scan + SHA-256 hashing is CPU-intensive; run at background priority
+        // so the phone doesn't heat up or slow down the UI
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
         try {
             val scanned = try {
                 mediaScanner.scanAllMedia()
