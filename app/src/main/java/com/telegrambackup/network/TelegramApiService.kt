@@ -22,6 +22,8 @@ data class TelegramResponse<T>(
 data class TelegramMessage(
     val message_id: Long,
     val chat: TelegramChat,
+    val text: String? = null,
+    val caption: String? = null,
     val photo: List<TelegramPhotoSize>?,
     val video: TelegramVideo?,
     val document: TelegramDocument?,
@@ -33,6 +35,12 @@ data class TelegramPhotoSize(val file_id: String, val file_unique_id: String, va
 data class TelegramVideo(val file_id: String, val file_unique_id: String, val width: Int, val height: Int, val duration: Int, val file_size: Long?)
 data class TelegramDocument(val file_id: String, val file_unique_id: String, val file_name: String?, val file_size: Long?)
 data class TelegramAudio(val file_id: String, val file_unique_id: String, val duration: Int, val file_size: Long?)
+
+data class TelegramChatFull(
+    val id: Long,
+    val title: String?,
+    val pinned_message: TelegramMessage?
+)
 
 data class TelegramFile(
     val file_id: String,
@@ -214,6 +222,39 @@ class TelegramApiService @Inject constructor() {
             .add("chat_id", chatId)
             .add("from_chat_id", chatId)
             .add("message_id", messageId.toString())
+            .build()
+        return post<TelegramMessage>(url, body)
+    }
+
+    suspend fun getChatFull(token: String, chatId: String): Result<TelegramChatFull> {
+        val url = "${baseUrl(token)}/getChat"
+        val body = FormBody.Builder().add("chat_id", chatId).build()
+        return post<TelegramChatFull>(url, body)
+    }
+
+    suspend fun pinChatMessage(token: String, chatId: String, messageId: Long) {
+        try {
+            val url = "${baseUrl(token)}/pinChatMessage"
+            val body = FormBody.Builder()
+                .add("chat_id", chatId)
+                .add("message_id", messageId.toString())
+                .add("disable_notification", "true")
+                .build()
+            post<Any>(url, body)
+        } catch (_: Exception) {}
+    }
+
+    suspend fun sendJsonAsDocument(token: String, chatId: String, jsonContent: String, fileName: String): Result<TelegramMessage> {
+        val url = "${baseUrl(token)}/sendDocument"
+        val jsonBytes = jsonContent.toByteArray(Charsets.UTF_8)
+        val body = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("chat_id", chatId)
+            .addFormDataPart("caption", "#TelegramBackupIndex")
+            .addFormDataPart(
+                "document", fileName,
+                jsonBytes.toRequestBody("application/json".toMediaType())
+            )
             .build()
         return post<TelegramMessage>(url, body)
     }

@@ -377,6 +377,111 @@ class BackupRepository @Inject constructor(
         }
     }
 
+    // Save index of all uploaded files to Telegram chat as a pinned JSON document
+    suspend fun saveIndexToTelegram(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val token = preferences.botToken.first()
+            val chatId = preferences.chatId.first()
+            if (token.isEmpty() || chatId.isEmpty()) return@withContext Result.failure(Exception("Not configured"))
+
+            val uploaded = backupFileDao.getAllUploadedFiles()
+            if (uploaded.isEmpty()) return@withContext Result.success(Unit)
+
+            val entries = uploaded.joinToString("\n") { f ->
+                "${f.fileHash ?: ""}|${f.telegramFileId ?: ""}|${f.fileName}|${f.fileSize}|${f.uploadedToChatId ?: chatId}"
+            }
+            val json = buildString {
+                append("{\"version\":2,\"chatId\":\"$chatId\",\"generated\":${System.currentTimeMillis()},")
+                append("\"count\":${uploaded.size},")
+                append("\"entries\":\"")
+                append(entries.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n"))
+                append("\"}")
+            }
+
+            val result = telegramApi.sendJsonAsDocument(token, chatId, json, "telegram_backup_index.json")
+            result.fold(
+                onSuccess = { msg ->
+                    telegramApi.pinChatMessage(token, chatId, msg.message_id)
+                    Log.i(TAG, "Index saved to Telegram: ${uploaded.size} files")
+                },
+                onFailure = { Log.w(TAG, "Could not save index: ${it.message}") }
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "saveIndexToTelegram error", e)
+            Result.failure(e)
+        }
+    }
+
+    // Restore uploaded status by reading the pinned index from Telegram chat
+    suspend fun restoreFromTelegramIndex(): Pair<Int, String> = withContext(Dispatchers.IO) {
+        try {
+            val token = preferences.botToken.first()
+            val chatId = preferences.chatId.first()
+            if (token.isEmpty() || chatId.isEmpty()) return@withContext Pair(0, "Bot no configurado")
+
+            // Get chat info to find pinned message
+            val chatResult = telegramApi.getChatFull(token, chatId)
+            val pinnedMsg = chatResult.getOrNull()?.pinned_message
+                ?: return@withContext Pair(0, "No hay mensaje pinneado en el chat")
+
+            // Must be a document with our caption
+            val doc = pinnedMsg.document
+            val caption = pinnedMsg.caption ?: ""
+            if (doc == null || !caption.contains("TelegramBackupIndex")) {
+                return@withContext Pair(0, "El mensaje pinneado no es un índice de respaldo")
+            }
+
+            // Download the index document
+            val fileInfoResult = telegramApi.getFile(token, doc.file_id)
+            val filePath = fileInfoResult.getOrNull()?.file_path
+                ?: return@withContext Pair(0, "No se pudo obtener el índice")
+
+            val contentResult = telegramApi.downloadFile(token, filePath)
+            val jsonBytes = contentResult.getOrNull()
+                ?: return@withContext Pair(0, "No se pudo descargar el índice")
+
+            val json = String(jsonBytes, Charsets.UTF_8)
+
+            // Parse entries: hash|telegramFileId|fileName|fileSize|chatId
+            val entriesMatch = Regex("\"entries\":\"(.*?)\"(?:}|,)").find(json)
+            val rawEntries = entriesMatch?.groupValues?.get(1)?.replace("\\n", "\n")?.replace("\\\"", "\"") ?: ""
+            if (rawEntries.isEmpty()) return@withContext Pair(0, "Índice vacío")
+
+            val pendingFiles = backupFileDao.getPendingFiles().first()
+            val byHash = pendingFiles.associateBy { it.fileHash ?: "" }
+            val byName = pendingFiles.associateBy { it.fileName }
+
+            var restored = 0
+            for (line in rawEntries.lines()) {
+                if (line.isBlank()) continue
+                val parts = line.split("|")
+                if (parts.size < 4) continue
+                val hash = parts[0]
+                val tgFileId = parts[1]
+                val fileName = parts[2]
+                val fileSize = parts[3].toLongOrNull() ?: 0L
+                val indexChatId = if (parts.size >= 5) parts[4] else chatId
+
+                if (indexChatId != chatId) continue // skip files from different chat
+
+                val file = byHash[hash] ?: byName[fileName]
+                    ?: pendingFiles.find { it.fileSize == fileSize }
+                    ?: continue
+
+                backupFileDao.markUploaded(file.id, tgFileId, 0L, System.currentTimeMillis(), chatId)
+                historyStore.record(hash, file.filePath, tgFileId, chatId, 0L)
+                restored++
+            }
+
+            if (restored > 0) Pair(restored, "✅ $restored archivos detectados desde Telegram")
+            else Pair(0, "No se encontraron coincidencias con archivos locales")
+        } catch (e: Exception) {
+            Log.e(TAG, "restoreFromTelegramIndex error", e)
+            Pair(0, "Error: ${e.message}")
+        }
+    }
+
     suspend fun isWifiConnected(): Boolean = networkUtils.isWifiConnected()
     suspend fun isConfigured(): Boolean = preferences.isConfigured.first()
 }

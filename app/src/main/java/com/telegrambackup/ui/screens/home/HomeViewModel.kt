@@ -55,6 +55,14 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(restoreAttempted = true)
             }
         }
+        // Try to restore from Telegram index (works across phone changes)
+        viewModelScope.launch {
+            try {
+                if (preferences.isConfigured.first()) {
+                    repository.restoreFromTelegramIndex()
+                }
+            } catch (_: Exception) {}
+        }
         observeStats()
         observeConfig()
     }
@@ -162,8 +170,15 @@ class HomeViewModel @Inject constructor(
 
     fun syncFromTelegram(onDone: (String) -> Unit) {
         viewModelScope.launch {
-            val (_, message) = repository.syncFromTelegram()
-            onDone(message)
+            // Try pinned index first (works across phone changes)
+            val (count, msg) = repository.restoreFromTelegramIndex()
+            if (count > 0) {
+                onDone(msg)
+                return@launch
+            }
+            // Fallback: scan recent bot updates
+            val (count2, msg2) = repository.syncFromTelegram()
+            onDone(if (count2 > 0) msg2 else "No se encontraron archivos en Telegram. Asegúrate de que el índice esté guardado (se guarda automáticamente al terminar una copia).")
         }
     }
 
