@@ -69,7 +69,7 @@ interface BackupFileDao {
     @Query("SELECT COUNT(*) FROM backup_files WHERE uploadStatus = 'UPLOADED'")
     fun getUploadedCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM backup_files WHERE uploadStatus = 'PENDING'")
+    @Query("SELECT COUNT(*) FROM backup_files WHERE uploadStatus = 'PENDING' OR uploadStatus = 'ERROR'")
     fun getPendingCount(): Flow<Int>
 
     @Query("SELECT SUM(fileSize) FROM backup_files WHERE uploadStatus = 'UPLOADED'")
@@ -77,4 +77,10 @@ interface BackupFileDao {
 
     @Query("SELECT * FROM backup_files WHERE telegramFileId IS NOT NULL AND telegramFileId != ''")
     suspend fun getAllUploadedFiles(): List<BackupFile>
+
+    @Query("SELECT COUNT(*) FROM backup_files WHERE uploadStatus = 'UPLOADED'")
+    suspend fun getUploadedCountOnce(): Int
+
+    @Query("SELECT COUNT(*) FROM backup_files")
+    suspend fun getTotalCountOnce(): Int
 }

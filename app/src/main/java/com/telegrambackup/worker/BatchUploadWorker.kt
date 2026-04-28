@@ -66,8 +66,8 @@ class BatchUploadWorker @AssistedInject constructor(
         if (token.isEmpty() || chatId.isEmpty()) return@withContext Result.failure()
 
         val pendingFiles = backupFileDao.getPendingFiles().first()
-        val total = pendingFiles.size
-        var done = 0
+        // Snapshot grand total once so notification title is consistent with the app UI
+        val grandTotal = backupFileDao.getTotalCountOnce()
 
         for (file in pendingFiles) {
             // Stop if worker was cancelled (pause button or system) or pause flag set
@@ -90,19 +90,21 @@ class BatchUploadWorker @AssistedInject constructor(
             try {
                 backupFileDao.updateStatus(file.id, UploadStatus.UPLOADING, 0)
                 val caption = "📁 ${file.fileName}\n💾 ${FileUtils.formatFileSize(file.fileSize)}"
+                // Read live uploaded count so notification matches what the app shows
+                val uploadedNow = backupFileDao.getUploadedCountOnce()
 
                 val result = when (file.fileType) {
                     FileType.IMAGE -> telegramApi.sendPhoto(token, chatId, localFile, caption) { p ->
-                        updateNotification(file.fileName, p, done, total)
+                        updateNotification(file.fileName, p, uploadedNow, grandTotal)
                     }
                     FileType.VIDEO -> telegramApi.sendVideo(token, chatId, localFile, caption, onProgress = { p ->
-                        updateNotification(file.fileName, p, done, total)
+                        updateNotification(file.fileName, p, uploadedNow, grandTotal)
                     })
                     FileType.AUDIO -> telegramApi.sendAudio(token, chatId, localFile, caption) { p ->
-                        updateNotification(file.fileName, p, done, total)
+                        updateNotification(file.fileName, p, uploadedNow, grandTotal)
                     }
                     FileType.DOCUMENT -> telegramApi.sendDocument(token, chatId, localFile, caption) { p ->
-                        updateNotification(file.fileName, p, done, total)
+                        updateNotification(file.fileName, p, uploadedNow, grandTotal)
                     }
                 }
 
@@ -117,7 +119,6 @@ class BatchUploadWorker @AssistedInject constructor(
                         backupFileDao.markUploaded(file.id, tgFileId, msg.message_id, System.currentTimeMillis(), chatId)
                         // Save to external history so it survives DB reset
                         historyStore.record(file.fileHash ?: "", file.filePath, tgFileId, chatId, msg.message_id)
-                        done++
                     },
                     onFailure = { e ->
                         backupFileDao.markError(file.id, e.message ?: "Error")

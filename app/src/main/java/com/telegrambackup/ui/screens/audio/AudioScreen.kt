@@ -937,7 +937,8 @@ fun SpotifyAudioListItem(
     file: BackupFile,
     isPlaying: Boolean,
     onClick: () -> Unit,
-    onAddToPlaylist: (() -> Unit)? = null
+    onAddToPlaylist: (() -> Unit)? = null,
+    onRemoveFromPlaylist: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -1011,7 +1012,7 @@ fun SpotifyAudioListItem(
             Spacer(Modifier.width(4.dp))
         }
 
-        // Add-to-playlist button (⋮)
+        // Add-to-playlist button (⋮) — only shown when not in playlist detail
         onAddToPlaylist?.let { action ->
             IconButton(
                 onClick = action,
@@ -1021,6 +1022,21 @@ fun SpotifyAudioListItem(
                     Icons.Filled.MoreVert,
                     "Agregar a lista",
                     tint = SpotifyGray,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // Remove-from-playlist button — only shown inside PlaylistDetailScreen
+        onRemoveFromPlaylist?.let { action ->
+            IconButton(
+                onClick = action,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    Icons.Filled.RemoveCircleOutline,
+                    "Quitar de playlist",
+                    tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -1148,7 +1164,10 @@ fun PlaylistDetailScreen(
                 SpotifyAudioListItem(
                     file = file,
                     isPlaying = currentPlaying?.id == file.id && isPlaying,
-                    onClick = { playFile(file) }
+                    onClick = { playFile(file) },
+                    onRemoveFromPlaylist = {
+                        viewModel.removeFromPlaylist(playlistId, file.id)
+                    }
                 )
             }
         }

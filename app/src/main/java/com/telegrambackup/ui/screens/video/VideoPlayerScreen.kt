@@ -73,18 +73,21 @@ fun VideoPlayerScreen(
             .background(Color.Black)
             .clickable { showControls = !showControls }
     ) {
-        // ExoPlayer View
+        // ExoPlayer View — key on fileId so the PlayerView is recreated on video change
         uiState.exoPlayer?.let { player ->
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        this.player = player
-                        useController = false
-                        setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+            key(uiState.currentFile?.id) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            this.player = player
+                            useController = false
+                            setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                        }
+                    },
+                    update = { playerView -> playerView.player = player },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
 
         // Top gradient

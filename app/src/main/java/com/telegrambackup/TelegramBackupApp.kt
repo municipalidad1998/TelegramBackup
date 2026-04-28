@@ -7,6 +7,9 @@ import android.os.Environment
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import coil.Coil
+import coil.ImageLoader
+import coil.decode.VideoFrameDecoder
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import java.io.PrintWriter
@@ -30,6 +33,13 @@ class TelegramBackupApp : Application(), Configuration.Provider {
 
         // Set up global crash handler BEFORE anything else
         setupCrashHandler()
+
+        // Register VideoFrameDecoder so Coil can generate thumbnails from video files
+        Coil.setImageLoader(
+            ImageLoader.Builder(this)
+                .components { add(VideoFrameDecoder.Factory()) }
+                .build()
+        )
 
         createNotificationChannels()
         restoreConfigFromExternalBackup()

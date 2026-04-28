@@ -12,6 +12,7 @@ import com.telegrambackup.data.local.entity.FileType
 import com.telegrambackup.data.repository.BackupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -39,6 +40,7 @@ class VideoViewModel @Inject constructor(
     val uiState: StateFlow<VideoUiState> = _uiState.asStateFlow()
 
     private var exoPlayer: ExoPlayer? = null
+    private var positionUpdateJob: Job? = null
 
     init {
         loadVideoPlaylist()
@@ -54,37 +56,46 @@ class VideoViewModel @Inject constructor(
 
     fun loadVideo(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                error = null,
+                currentPosition = 0L,
+                duration = 0L,
+                isPlaying = false
+            )
 
             val file = repository.getFileById(fileId)
             if (file == null) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = "File not found")
+                _uiState.value = _uiState.value.copy(isLoading = false, error = "Archivo no encontrado")
                 return@launch
             }
 
             _uiState.value = _uiState.value.copy(currentFile = file)
 
-            // Initialize ExoPlayer on main thread
             viewModelScope.launch(Dispatchers.Main) {
                 initExoPlayer(file)
             }
         }
     }
 
-    private suspend fun initExoPlayer(file: BackupFile) {
-        val context = getApplication<Application>()
+    private fun initExoPlayer(file: BackupFile) {
+        // Cancel stale position polling from the previous video
+        positionUpdateJob?.cancel()
+        positionUpdateJob = null
 
+        val context = getApplication<Application>()
         exoPlayer?.release()
 
-        exoPlayer = ExoPlayer.Builder(context).build().apply {
-            val mediaItem = if (File(file.filePath).exists()) {
-                MediaItem.fromUri(Uri.fromFile(File(file.filePath)))
-            } else {
-                // Try to use a content URI or placeholder
-                MediaItem.fromUri(Uri.parse("https://example.com/placeholder"))
-            }
+        if (!File(file.filePath).exists()) {
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                error = "El archivo no existe en este dispositivo"
+            )
+            return
+        }
 
-            setMediaItem(mediaItem)
+        exoPlayer = ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(Uri.fromFile(File(file.filePath))))
             prepare()
 
             addListener(object : Player.Listener {
@@ -97,16 +108,12 @@ class VideoViewModel @Inject constructor(
                         Player.STATE_READY -> {
                             _uiState.value = _uiState.value.copy(
                                 isLoading = false,
-                                duration = exoPlayer?.duration ?: 0L
+                                duration = this@apply.duration.coerceAtLeast(0L)
                             )
                             startPositionUpdates()
                         }
-                        Player.STATE_ENDED -> {
-                            playNext()
-                        }
-                        Player.STATE_BUFFERING -> {
-                            _uiState.value = _uiState.value.copy(isLoading = true)
-                        }
+                        Player.STATE_ENDED -> playNext()
+                        Player.STATE_BUFFERING -> _uiState.value = _uiState.value.copy(isLoading = true)
                         Player.STATE_IDLE -> {}
                     }
                 }
@@ -119,12 +126,13 @@ class VideoViewModel @Inject constructor(
     }
 
     private fun startPositionUpdates() {
-        viewModelScope.launch {
+        positionUpdateJob?.cancel()
+        positionUpdateJob = viewModelScope.launch {
             while (true) {
                 exoPlayer?.let { player ->
                     _uiState.value = _uiState.value.copy(
                         currentPosition = player.currentPosition,
-                        duration = player.duration.coerceAtLeast(0)
+                        duration = player.duration.coerceAtLeast(0L)
                     )
                 }
                 delay(500)
@@ -133,10 +141,7 @@ class VideoViewModel @Inject constructor(
     }
 
     fun togglePlayPause() {
-        exoPlayer?.let { player ->
-            if (player.isPlaying) player.pause()
-            else player.play()
-        }
+        exoPlayer?.let { if (it.isPlaying) it.pause() else it.play() }
     }
 
     fun pausePlayback() {
@@ -157,27 +162,19 @@ class VideoViewModel @Inject constructor(
     fun playNext() {
         val currentId = _uiState.value.currentFile?.id ?: return
         val playlist = _uiState.value.playlist
-        val currentIndex = playlist.indexOfFirst { it.id == currentId }
-        if (currentIndex < playlist.size - 1) {
-            loadVideo(playlist[currentIndex + 1].id)
-        }
+        val idx = playlist.indexOfFirst { it.id == currentId }
+        if (idx < playlist.size - 1) loadVideo(playlist[idx + 1].id)
     }
 
     fun playPrevious() {
         val currentId = _uiState.value.currentFile?.id ?: return
         val playlist = _uiState.value.playlist
-        val currentIndex = playlist.indexOfFirst { it.id == currentId }
-        if (currentIndex > 0) {
-            loadVideo(playlist[currentIndex - 1].id)
-        }
-    }
-
-    fun toggleMiniPlayer() {
-        // Mini-player mode: continue playback in a floating window
-        // This is handled by the service binding
+        val idx = playlist.indexOfFirst { it.id == currentId }
+        if (idx > 0) loadVideo(playlist[idx - 1].id)
     }
 
     override fun onCleared() {
+        positionUpdateJob?.cancel()
         exoPlayer?.release()
         exoPlayer = null
         super.onCleared()
