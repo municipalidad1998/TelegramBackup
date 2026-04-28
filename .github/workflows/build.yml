@@ -94,11 +94,12 @@ jobs:
 
           echo "Release creado ID=${RELEASE_ID}"
 
-          # Upload APK
+          # Use the upload_url from the response (avoids api vs uploads host mismatch)
+          UPLOAD_URL=$(echo "$RELEASE" | jq -r '.upload_url' | sed 's/{?name,label}//')
           curl -s -X POST \
             -H "Authorization: token ${GITHUB_TOKEN}" \
             -H "Content-Type: application/vnd.android.package-archive" \
-            "${API}/releases/${RELEASE_ID}/assets?name=${APK_NAME}" \
+            "${UPLOAD_URL}?name=${APK_NAME}" \
             --data-binary @"dist/${APK_NAME}"
 
           echo "APK publicado en: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
