@@ -57,6 +57,7 @@ fun AudioScreen(
     var showCreatePlaylist by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showFullPlayer by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     // Add-to-playlist sheet
     var fileToAddToPlaylist by remember { mutableStateOf<BackupFile?>(null) }
@@ -223,32 +224,71 @@ fun AudioScreen(
 
             when (selectedTab) {
                 0 -> {
-                    if (uiState.audioFiles.isEmpty()) {
+                    // Search bar
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        placeholder = { Text("Buscar canción…", color = SpotifyGray) },
+                        leadingIcon = {
+                            Icon(Icons.Filled.Search, null, tint = SpotifyGray, modifier = Modifier.size(20.dp))
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Filled.Close, "Limpiar", tint = SpotifyGray, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SpotifyGreen,
+                            unfocusedBorderColor = SpotifyGray.copy(alpha = 0.3f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = SpotifyGreen,
+                            focusedContainerColor = SpotifyCard,
+                            unfocusedContainerColor = SpotifyCard
+                        )
+                    )
+
+                    val filteredAudio = if (searchQuery.isBlank()) uiState.audioFiles
+                    else uiState.audioFiles.filter {
+                        it.fileName.contains(searchQuery, ignoreCase = true)
+                    }
+
+                    if (filteredAudio.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
-                                    Icons.Outlined.MusicNote,
+                                    if (searchQuery.isBlank()) Icons.Outlined.MusicNote else Icons.Filled.Search,
                                     null,
                                     modifier = Modifier.size(64.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(Modifier.height(16.dp))
                                 Text(
-                                    "No hay archivos de audio",
+                                    if (searchQuery.isBlank()) "No hay archivos de audio"
+                                    else "Sin resultados para \"$searchQuery\"",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Text(
-                                    "Escanea tu dispositivo para encontrar música",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
-                                )
+                                if (searchQuery.isBlank()) {
+                                    Text(
+                                        "Escanea tu dispositivo para encontrar música",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
                         }
                     } else {
                         LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
-                            items(uiState.audioFiles, key = { it.id }) { file ->
+                            items(filteredAudio, key = { it.id }) { file ->
                                 SpotifyAudioListItem(
                                     file = file,
                                     isPlaying = currentPlaying?.id == file.id && isPlaying,

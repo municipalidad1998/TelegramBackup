@@ -1,5 +1,7 @@
 package com.telegrambackup.ui.screens.gallery
 
+import android.app.Activity
+import android.view.View
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -213,40 +215,77 @@ fun ImageViewerScreen(
     onBack: () -> Unit,
     viewModel: GalleryViewModel = hiltViewModel()
 ) {
-    val file by viewModel.getFileById(fileId).collectAsStateWithLifecycle(null)
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(file?.fileName ?: "Image") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black.copy(alpha = 0.7f),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
-            )
-        },
-        containerColor = Color.Black
-    ) { padding ->
-        file?.let { backupFile ->
+    // All images (regardless of current filter)
+    val images = remember(uiState.allFiles) {
+        uiState.allFiles.filter { it.fileType == FileType.IMAGE }
+    }
+    val initialPage = remember(images, fileId) {
+        images.indexOfFirst { it.id == fileId }.coerceAtLeast(0)
+    }
+
+    if (images.isEmpty()) {
+        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Color.White)
+        }
+        return
+    }
+
+    val pagerState = rememberPagerState(initialPage = initialPage) { images.size }
+    val currentFile = images.getOrNull(pagerState.currentPage)
+    var showControls by remember { mutableStateOf(true) }
+
+    // Immersive fullscreen while viewer is open
+    DisposableEffect(Unit) {
+        val activity = context as? Activity
+        val decorView = activity?.window?.decorView
+        @Suppress("DEPRECATION")
+        decorView?.systemUiVisibility = (
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            or View.SYSTEM_UI_FLAG_FULLSCREEN
+            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        )
+        onDispose {
+            @Suppress("DEPRECATION")
+            decorView?.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            key = { images[it].id }
+        ) { page ->
+            val backupFile = images[page]
             var scale by remember { mutableFloatStateOf(1f) }
             var offsetX by remember { mutableFloatStateOf(0f) }
             var offsetY by remember { mutableFloatStateOf(0f) }
 
+            // Reset zoom when page changes
+            LaunchedEffect(page) {
+                scale = 1f; offsetX = 0f; offsetY = 0f
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
-                    .pointerInput(Unit) {
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null
+                    ) { showControls = !showControls }
+                    .pointerInput(page) {
                         detectTransformGestures { _, pan, zoom, _ ->
                             scale = (scale * zoom).coerceIn(1f, 5f)
-                            offsetX += pan.x
-                            offsetY += pan.y
+                            if (scale > 1f) {
+                                offsetX += pan.x
+                                offsetY += pan.y
+                            }
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -256,7 +295,7 @@ fun ImageViewerScreen(
                             else backupFile.telegramFileId,
                     contentDescription = backupFile.fileName,
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .graphicsLayer(
                             scaleX = scale,
                             scaleY = scale,
@@ -265,29 +304,79 @@ fun ImageViewerScreen(
                         ),
                     contentScale = ContentScale.Fit
                 )
+            }
+        }
 
-                // Bottom info bar
+        // Top bar overlay
+        AnimatedVisibility(
+            visible = showControls,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            TopAppBar(
+                title = {
+                    Text(
+                        currentFile?.fileName ?: "",
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.White
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Filled.ArrowBack, "Volver", tint = Color.White)
+                    }
+                },
+                actions = {
+                    Text(
+                        "${pagerState.currentPage + 1} / ${images.size}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Black.copy(alpha = 0.6f)
+                )
+            )
+        }
+
+        // Bottom info bar overlay
+        AnimatedVisibility(
+            visible = showControls,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            currentFile?.let { backupFile ->
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .padding(16.dp)
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
+                            )
+                        )
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Text(
                         backupFile.fileName,
                         style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = Color.White
                     )
                     Text(
                         "${FileUtils.formatFileSize(backupFile.fileSize)} • ${
-                            SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(backupFile.dateAdded)
+                            SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(backupFile.dateAdded)
                         }",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.7f)
                     )
                     Row(
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         StatusChip(status = backupFile.uploadStatus)
