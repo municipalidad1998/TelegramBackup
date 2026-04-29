@@ -3,6 +3,7 @@ package com.telegrambackup.ui.screens.gallery
 import android.app.Activity
 import android.view.View
 import androidx.compose.animation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -208,7 +209,7 @@ fun GalleryScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ImageViewerScreen(
     fileId: Long,
