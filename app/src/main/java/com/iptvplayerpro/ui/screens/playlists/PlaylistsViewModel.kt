@@ -75,7 +75,7 @@ class PlaylistsViewModel(private val container: AppContainer) : ViewModel() {
 
     private fun updateExtra(id: Long, transform: (PlaylistItem) -> PlaylistItem) {
         extras.value = extras.value.toMutableMap().apply {
-            val current = this[id] ?: PlaylistItem(Playlist(id = id, name = ""))
+            val current = this[id] ?: PlaylistItem(Playlist(id = id, name = "", type = PlaylistType.M3U))
             put(id, transform(current))
         }
     }
