@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iptvplayerpro.di.AppContainer
 import com.iptvplayerpro.domain.model.Playlist
+import com.iptvplayerpro.domain.model.PlaylistType
 import com.iptvplayerpro.domain.model.TestConnectionResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

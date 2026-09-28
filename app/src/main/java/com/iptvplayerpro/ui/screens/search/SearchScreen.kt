@@ -69,7 +69,7 @@ fun SearchScreen(
     onPlayChannel: (Long) -> Unit,
     onOpenSeries: (Long) -> Unit
 ) {
-    val viewModel = containerViewModel { container, _ -> SearchViewModel(container) }
+    val viewModel = containerViewModel(SearchViewModel::class) { container, _ -> SearchViewModel(container) }
     val query by viewModel.query.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val searching by viewModel.searching.collectAsStateWithLifecycle()

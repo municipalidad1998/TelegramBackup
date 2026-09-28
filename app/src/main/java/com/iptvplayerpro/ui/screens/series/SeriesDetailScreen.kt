@@ -57,7 +57,7 @@ fun SeriesDetailScreen(
     onBack: () -> Unit,
     onPlayEpisode: (url: String, name: String) -> Unit
 ) {
-    val viewModel = containerViewModel(key = "series_$channelId") { container, _ ->
+    val viewModel = containerViewModel(SeriesDetailViewModel::class, key = "series_$channelId") { container, _ ->
         SeriesDetailViewModel(container)
     }
     val state by viewModel.state.collectAsStateWithLifecycle()

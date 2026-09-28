@@ -66,7 +66,7 @@ fun PlaylistsScreen(
     onAddList: () -> Unit,
     onEditList: (Long) -> Unit
 ) {
-    val viewModel = containerViewModel { container, _ -> PlaylistsViewModel(container) }
+    val viewModel = containerViewModel(PlaylistsViewModel::class) { container, _ -> PlaylistsViewModel(container) }
     val items by viewModel.items.collectAsStateWithLifecycle()
     var deleteTarget by remember { mutableStateOf<Playlist?>(null) }
 

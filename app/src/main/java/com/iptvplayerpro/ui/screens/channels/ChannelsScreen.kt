@@ -67,7 +67,7 @@ fun ChannelsScreen(
     onOpenSearch: () -> Unit,
     onOpenSeries: (Long) -> Unit
 ) {
-    val viewModel = containerViewModel(key = "channels_$type") { container, _ ->
+    val viewModel = containerViewModel(ChannelsViewModel::class, key = "channels_$type") { container, _ ->
         ChannelsViewModel(container, type)
     }
     val channels = viewModel.channels.collectAsLazyPagingItems()

@@ -57,7 +57,7 @@ fun PlaylistEditScreen(
     onBack: () -> Unit,
     onSaved: () -> Unit
 ) {
-    val viewModel = containerViewModel(key = "edit_$playlistId") { container, _ ->
+    val viewModel = containerViewModel(PlaylistEditViewModel::class, key = "edit_$playlistId") { container, _ ->
         PlaylistEditViewModel(container)
     }
     val state by viewModel.state.collectAsStateWithLifecycle()

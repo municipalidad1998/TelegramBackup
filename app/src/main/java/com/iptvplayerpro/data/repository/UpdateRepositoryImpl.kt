@@ -39,17 +39,7 @@ class UpdateRepositoryImpl(
     override val currentVersionName: String get() = BuildConfig.VERSION_NAME
     override val currentVersionCode: Int get() = BuildConfig.VERSION_CODE
 
-    override suspend fun checkForUpdate(): Result<UpdateInfo?> = withContext(Dispatchers.IO) {
-        runCatching {
-            val url = Http.fetchText(http, "https://ipwho.is/") // placeholder eliminado abajo
-            Unit
-        }
-        // La URL de actualización se obtiene en el ViewModel (settings) y se pasa aquí.
-        runCatching { null }
-    }
-
-    /** Versión con URL explícita (la configura el usuario en Ajustes). */
-    suspend fun checkForUpdate(updateUrl: String): Result<UpdateInfo?> = withContext(Dispatchers.IO) {
+    override suspend fun checkForUpdate(updateUrl: String): Result<UpdateInfo?> = withContext(Dispatchers.IO) {
         runCatching {
             val url = updateUrl.trim()
             if (url.isEmpty()) return@runCatching null

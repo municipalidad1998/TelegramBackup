@@ -63,7 +63,7 @@ fun EpgGuideScreen(
     onBack: () -> Unit,
     onPlayChannel: (Long) -> Unit
 ) {
-    val viewModel = containerViewModel { container, _ -> EpgGuideViewModel(container) }
+    val viewModel = containerViewModel(EpgGuideViewModel::class) { container, _ -> EpgGuideViewModel(container) }
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     val dayNames = remember {
@@ -206,7 +206,7 @@ private fun EpgTimeline(
                     for (hour in 0 until 24) {
                         Box(
                             Modifier
-                                .width(60 * PX_PER_MINUTE)
+                                .width(PX_PER_MINUTE * 60)
                                 .padding(horizontal = 4.dp)
                         ) {
                             Text(
@@ -278,7 +278,7 @@ private fun EpgTimeline(
                                     },
                                     contentColor = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier
-                                        .width(widthMinutes * PX_PER_MINUTE)
+                                        .width(PX_PER_MINUTE * widthMinutes)
                                         .padding(1.dp)
                                         .clickable { onProgrammeClick(programme) }
                                 ) {
@@ -305,7 +305,7 @@ private fun EpgTimeline(
                             if (isToday && nowMinutes in 0..(24 * 60)) {
                                 Box(
                                     Modifier
-                                        .offset(x = nowMinutes * PX_PER_MINUTE)
+                                        .offset(x = PX_PER_MINUTE * nowMinutes)
                                         .width(2.dp)
                                         .fillMaxHeight()
                                         .background(MaterialTheme.colorScheme.error)

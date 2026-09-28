@@ -40,7 +40,7 @@ fun SeriesScreen(
     onBack: () -> Unit,
     onOpenSeries: (Long) -> Unit
 ) {
-    val viewModel = containerViewModel { container, _ -> SeriesViewModel(container) }
+    val viewModel = containerViewModel(SeriesViewModel::class) { container, _ -> SeriesViewModel(container) }
     val series = viewModel.series.collectAsLazyPagingItems()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()

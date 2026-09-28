@@ -78,7 +78,7 @@ import com.iptvplayerpro.vpn.WgConfigInspector
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VpnScreen(onBack: () -> Unit) {
-    val viewModel = containerViewModel { container, _ -> VpnViewModel(container) }
+    val viewModel = containerViewModel(VpnViewModel::class) { container, _ -> VpnViewModel(container) }
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
     val activeProfile by viewModel.activeProfile.collectAsStateWithLifecycle()

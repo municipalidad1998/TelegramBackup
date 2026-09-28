@@ -259,7 +259,7 @@ class PlaylistRepositoryImpl(
                 )
             }
             // Re-sincroniza con las credenciales nuevas.
-            refresh(id).onFailure { throw it.exceptionOrNull() ?: IllegalStateException("Error al actualizar.") }
+            refresh(id).onFailure { throw it }
             checkNotNull(playlistDao.getById(id)).toDomain()
         }
     }
@@ -484,7 +484,7 @@ class PlaylistRepositoryImpl(
                 val seriesId = channel.xtreamStreamId ?: error("Serie sin id.")
 
                 val api = "$server/player_api.php"
-                val detail = xtream.seriesInfo(api, user, password, seriesId)
+                val detail = xtream.seriesInfo(api, user, password, seriesId = seriesId)
                 val episodes = ArrayList<SeriesEpisode>(64)
                 detail.episodes?.forEach { (season, list) ->
                     val seasonNum = season.toIntOrNull() ?: 1

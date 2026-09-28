@@ -77,7 +77,7 @@ fun LibraryScreen(
     onBack: () -> Unit,
     onPlayChannel: (Long) -> Unit
 ) {
-    val viewModel = containerViewModel { container, _ -> LibraryViewModel(container) }
+    val viewModel = containerViewModel(LibraryViewModel::class) { container, _ -> LibraryViewModel(container) }
     val favorites = viewModel.favorites.collectAsLazyPagingItems()
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()

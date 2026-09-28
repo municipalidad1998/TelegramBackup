@@ -50,7 +50,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenVpn: () -> Unit
 ) {
-    val viewModel = containerViewModel { container, _ -> SettingsViewModel(container) }
+    val viewModel = containerViewModel(SettingsViewModel::class) { container, _ -> SettingsViewModel(container) }
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val checking by viewModel.checkingUpdate.collectAsStateWithLifecycle()
     val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()

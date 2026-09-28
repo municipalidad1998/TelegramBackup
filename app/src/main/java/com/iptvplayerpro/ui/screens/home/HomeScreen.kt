@@ -36,6 +36,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -68,7 +69,7 @@ import androidx.compose.foundation.layout.PaddingValues
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(onNavigate: (String) -> Unit) {
-    val viewModel = containerViewModel { container, _ -> HomeViewModel(container) }
+    val viewModel = containerViewModel(HomeViewModel::class) { container, _ -> HomeViewModel(container) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
     val isTv = AndroidExt.isTvDevice(LocalContext.current)

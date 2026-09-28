@@ -1,6 +1,7 @@
 package com.iptvplayerpro.ui.screens.player
 
 import android.app.PictureInPictureParams
+import android.content.Context
 import android.content.pm.ActivityInfo
 import android.media.AudioManager
 import android.os.Build
@@ -82,9 +83,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.SavedStateHandleSupport.createSavedStateHandle
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.iptvplayerpro.LocalActivity
 import com.iptvplayerpro.LocalPipMode
@@ -110,7 +112,7 @@ fun PlayerScreen(
     onBack: () -> Unit,
     onOpenVpn: () -> Unit
 ) {
-    val viewModel = containerViewModel(key = "player") { container, extras ->
+    val viewModel = containerViewModel(PlayerViewModel::class, key = "player") { container, extras ->
         PlayerViewModel(container, extras.createSavedStateHandle())
     }
     val controller = viewModel.controller
@@ -134,7 +136,7 @@ fun PlayerScreen(
     var seekPreviewMs by remember { mutableStateOf<Long?>(null) }
 
     val audioManager = remember(activity) {
-        activity?.getSystemService(ComponentActivity.AUDIO_SERVICE) as? AudioManager
+        activity?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     }
     var volumeLevel by remember { mutableFloatStateOf(-1f) }
     var brightnessLevel by remember { mutableFloatStateOf(-1f) }
@@ -238,7 +240,7 @@ fun PlayerScreen(
                 PlayerView(context).apply {
                     useController = false
                     setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-                    resizeMode = PlayerView.RESIZE_MODE_FIT
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                 }
             },
             update = { playerView ->
