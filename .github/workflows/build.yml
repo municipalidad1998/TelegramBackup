@@ -7,6 +7,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,12 +31,34 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace > /tmp/build-debug.log 2>&1 || (code=$?; echo "exit_code=$code" > /tmp/debug-status.txt; cat /tmp/build-debug.log; exit $code)
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --stacktrace
+        if: success() || failure()
+        run: ./gradlew assembleRelease --stacktrace > /tmp/build-release.log 2>&1 || (code=$?; echo "exit_code=$code" > /tmp/release-status.txt; cat /tmp/build-release.log; exit $code)
+
+      # Diagnóstico: publica los logs de compilación en el repo cuando falla,
+      # para poder inspeccionarlos aunque la descarga de artifacts no esté disponible.
+      - name: Publish build logs (on failure)
+        if: failure()
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "actions@github.com"
+          git add -A || true
+          mkdir -p ci-logs
+          cp /tmp/build-debug.log ci-logs/ 2>/dev/null || true
+          cp /tmp/build-release.log ci-logs/ 2>/dev/null || true
+          cp /tmp/debug-status.txt /tmp/release-status.txt ci-logs/ 2>/dev/null || true
+          {
+            echo "== Errores detectados =="
+            grep -nE "e: |error: |FAILURE|What went wrong|Caused by|> Task .*FAILED|Execution failed|exit_code" /tmp/build-debug.log /tmp/build-release.log 2>/dev/null || echo "(sin coincidencias)"
+          } > ci-logs/errors.txt
+          git add ci-logs
+          git commit -m "ci: adjuntar logs de compilación (fallo)" || echo "nada que commitear"
+          git push origin HEAD:${{ github.ref_name }} || echo "no se pudo subir el log"
 
       - name: Upload Debug APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: IPTVPlayerPro-debug
@@ -41,6 +66,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Release APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: IPTVPlayerPro-release
