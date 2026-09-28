@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <!-- Banner para Android TV -->
+    <path
+        android:pathData="M0,0h320v180h-320z">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0" android:startY="0"
+                android:endX="320" android:endY="180">
+                <item android:offset="0.0" android:color="#FF0B1220" />
+                <item android:offset="1.0" android:color="#FF123A67" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Televisor -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,60h84c3.3,0 6,2.7 6,6v36c0,3.3 -2.7,6 -6,6h-84c-3.3,0 -6,-2.7 -6,-6v-36c0,-3.3 2.7,-6 6,-6z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M72,108h20v6h-20z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M62,114h40v4h-40z" />
+    <path
+        android:fillColor="#1A73E8"
+        android:pathData="M75,73l26,13l-26,13z" />
+    <!-- Texto simplificado como barras (representación de marca) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M150,70h120v8h-120z" />
+    <path
+        android:fillColor="#7FB2F0"
+        android:pathData="M150,86h90v8h-90z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M150,104h100v8h-100z" />
+</vector>

@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.TelegramBackup" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- Tema base usado mientras arranca Compose. Sin ActionBar para UI 100% Compose. -->
+    <style name="Theme.IPTVPlayerPro" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_dark</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
-
-    <style name="Theme.TelegramBackup.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="postSplashScreenTheme">@style/Theme.TelegramBackup</item>
     </style>
 </resources>

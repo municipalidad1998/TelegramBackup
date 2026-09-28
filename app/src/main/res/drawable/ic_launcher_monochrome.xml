@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Versión monocroma para icono temático (Android 13+) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,38h48c2.2,0 4,1.8 4,4v22c0,2.2 -1.8,4 -4,4h-48c-2.2,0 -4,-1.8 -4,-4v-22c0,-2.2 1.8,-4 4,-4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,72h12v5h-12z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,77h24v3h-24z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M51,45.5l16,8.5l-16,8.5z" />
+</vector>

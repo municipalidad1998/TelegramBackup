@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
+    <!-- APK de actualización descargada por DownloadManager -->
+    <external-files-path name="updates" path="Download/" />
     <cache-path name="cache" path="." />
-    <files-path name="files" path="." />
-    <external-files-path name="external" path="." />
 </paths>
