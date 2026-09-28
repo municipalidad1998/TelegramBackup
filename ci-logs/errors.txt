@@ -1,0 +1,51 @@
+== Errores detectados ==
+/tmp/build-debug.log:50:Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libwg-go.so, libwg-quick.so, libwg.so.
+/tmp/build-debug.log:52:> Task :app:compileDebugKotlin FAILED
+/tmp/build-debug.log:53:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/data/repository/PlaylistRepositoryImpl.kt:262:46 Unresolved reference 'exceptionOrNull'.
+/tmp/build-debug.log:54:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/data/repository/PlaylistRepositoryImpl.kt:487:69 No value passed for parameter 'seriesId'.
+/tmp/build-debug.log:55:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/data/repository/UpdateRepositoryImpl.kt:42:5 'checkForUpdate' overrides nothing.
+/tmp/build-debug.log:56:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/data/repository/UpdateRepositoryImpl.kt:52:17 'checkForUpdate' hides member of supertype 'UpdateRepository' and needs an 'override' modifier.
+/tmp/build-debug.log:57:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/di/ViewModels.kt:21:5 Modifier is only allowed for function parameters of an inline function.
+/tmp/build-debug.log:58:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/di/ViewModels.kt:28:13 Unresolved reference 'initializer'.
+/tmp/build-debug.log:59:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/di/ViewModels.kt:28:45 Argument type mismatch: actual type is 'androidx.lifecycle.viewmodel.InitializerViewModelFactoryBuilder', but 'androidx.lifecycle.viewmodel.CreationExtras' was expected.
+/tmp/build-debug.log:60:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/epg/EpgGuideScreen.kt:209:43 None of the following candidates is applicable:
+/tmp/build-debug.log:67:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/epg/EpgGuideScreen.kt:281:61 None of the following candidates is applicable:
+/tmp/build-debug.log:74:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/epg/EpgGuideScreen.kt:308:64 None of the following candidates is applicable:
+/tmp/build-debug.log:81:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/home/HomeScreen.kt:164:13 Unresolved reference 'IconButton'.
+/tmp/build-debug.log:82:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/home/HomeScreen.kt:165:17 @Composable invocations can only happen from the context of a @Composable function
+/tmp/build-debug.log:83:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/home/HomeScreen.kt:168:42 @Composable invocations can only happen from the context of a @Composable function
+/tmp/build-debug.log:84:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/player/PlayerScreen.kt:85:27 Unresolved reference 'SavedStateHandleSupport'.
+/tmp/build-debug.log:85:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/player/PlayerScreen.kt:137:54 Unresolved reference 'AUDIO_SERVICE'.
+/tmp/build-debug.log:86:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/player/PlayerScreen.kt:241:45 Unresolved reference 'RESIZE_MODE_FIT'.
+/tmp/build-debug.log:87:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/playlists/PlaylistsViewModel.kt:77:70 No value passed for parameter 'type'.
+/tmp/build-debug.log:89:FAILURE: Build failed with an exception.
+/tmp/build-debug.log:91:* What went wrong:
+/tmp/build-debug.log:92:Execution failed for task ':app:compileDebugKotlin'.
+/tmp/build-debug.log:102:org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugKotlin'.
+/tmp/build-debug.log:134:Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+/tmp/build-debug.log:263:Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+/tmp/build-release.log:13:Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libwg-go.so, libwg-quick.so, libwg.so.
+/tmp/build-release.log:46:> Task :app:compileReleaseKotlin FAILED
+/tmp/build-release.log:47:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/data/repository/PlaylistRepositoryImpl.kt:262:46 Unresolved reference 'exceptionOrNull'.
+/tmp/build-release.log:48:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/data/repository/PlaylistRepositoryImpl.kt:487:69 No value passed for parameter 'seriesId'.
+/tmp/build-release.log:49:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/data/repository/UpdateRepositoryImpl.kt:42:5 'checkForUpdate' overrides nothing.
+/tmp/build-release.log:50:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/data/repository/UpdateRepositoryImpl.kt:52:17 'checkForUpdate' hides member of supertype 'UpdateRepository' and needs an 'override' modifier.
+/tmp/build-release.log:51:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/di/ViewModels.kt:21:5 Modifier is only allowed for function parameters of an inline function.
+/tmp/build-release.log:52:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/di/ViewModels.kt:28:13 Unresolved reference 'initializer'.
+/tmp/build-release.log:53:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/di/ViewModels.kt:28:45 Argument type mismatch: actual type is 'androidx.lifecycle.viewmodel.InitializerViewModelFactoryBuilder', but 'androidx.lifecycle.viewmodel.CreationExtras' was expected.
+/tmp/build-release.log:54:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/epg/EpgGuideScreen.kt:209:43 None of the following candidates is applicable:
+/tmp/build-release.log:61:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/epg/EpgGuideScreen.kt:281:61 None of the following candidates is applicable:
+/tmp/build-release.log:68:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/epg/EpgGuideScreen.kt:308:64 None of the following candidates is applicable:
+/tmp/build-release.log:75:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/home/HomeScreen.kt:164:13 Unresolved reference 'IconButton'.
+/tmp/build-release.log:76:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/home/HomeScreen.kt:165:17 @Composable invocations can only happen from the context of a @Composable function
+/tmp/build-release.log:77:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/home/HomeScreen.kt:168:42 @Composable invocations can only happen from the context of a @Composable function
+/tmp/build-release.log:78:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/player/PlayerScreen.kt:85:27 Unresolved reference 'SavedStateHandleSupport'.
+/tmp/build-release.log:79:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/player/PlayerScreen.kt:137:54 Unresolved reference 'AUDIO_SERVICE'.
+/tmp/build-release.log:80:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/player/PlayerScreen.kt:241:45 Unresolved reference 'RESIZE_MODE_FIT'.
+/tmp/build-release.log:81:e: file:///home/runner/work/TelegramBackup/TelegramBackup/app/src/main/java/com/iptvplayerpro/ui/screens/playlists/PlaylistsViewModel.kt:77:70 No value passed for parameter 'type'.
+/tmp/build-release.log:83:FAILURE: Build failed with an exception.
+/tmp/build-release.log:85:* What went wrong:
+/tmp/build-release.log:86:Execution failed for task ':app:compileReleaseKotlin'.
+/tmp/build-release.log:96:org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileReleaseKotlin'.
+/tmp/build-release.log:128:Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+/tmp/build-release.log:257:Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
